@@ -1,0 +1,260 @@
+<!doctype html>
+<html lang="zh-Hant">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Sam Hsiao | Personal Website</title>
+    <meta
+      name="description"
+      content="Sam Hsiao 的個人網站，整理作品、能力與聯絡方式。"
+    />
+    <meta property="og:title" content="Sam Hsiao | Personal Website" />
+    <meta
+      property="og:description"
+      content="把想法整理成有質感的產品、內容與數位體驗。"
+    />
+    <meta property="og:type" content="website" />
+    <meta property="og:image" content="./assets/hero-workspace.png" />
+    <link rel="preload" href="./assets/hero-workspace.png" as="image" />
+    <link rel="icon" href="./favicon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <a class="skip-link" href="#main">跳到主要內容</a>
+
+    <header class="site-header">
+      <nav class="nav" aria-label="主要導覽">
+        <a class="brand" href="#top" aria-label="Sam Hsiao 首頁">
+          <span class="brand-mark">SH</span>
+          <span>Sam Hsiao</span>
+        </a>
+
+        <button
+          class="nav-toggle"
+          type="button"
+          aria-expanded="false"
+          aria-controls="nav-menu"
+          aria-label="開啟選單"
+        >
+          <span></span>
+          <span></span>
+          <span></span>
+        </button>
+
+        <div class="nav-menu" id="nav-menu">
+          <a href="#about">關於</a>
+          <a href="#work">作品</a>
+          <a href="#skills">能力</a>
+          <a href="#posts">貼文</a>
+          <a href="#contact">聯絡</a>
+        </div>
+      </nav>
+    </header>
+
+    <main id="main">
+      <section class="hero" id="top" aria-labelledby="hero-title">
+        <img
+          class="hero-image"
+          src="./assets/hero-workspace.png"
+          alt="明亮的工作桌與台北城市景色"
+        />
+        <div class="hero-overlay" aria-hidden="true"></div>
+
+        <div class="hero-content reveal">
+          <p class="kicker">Personal Website</p>
+          <h1 id="hero-title">Sam Hsiao</h1>
+          <p class="hero-lede">
+            把想法整理成有質感的產品、內容與數位體驗。
+          </p>
+          <div class="hero-actions" aria-label="主要行動">
+            <a class="button button-primary" href="#work">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M7 7h10v10" />
+                <path d="M7 17 17 7" />
+              </svg>
+              看作品
+            </a>
+            <a class="button button-ghost" href="mailto:hello@example.com">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M4 6h16v12H4z" />
+                <path d="m4 7 8 6 8-6" />
+              </svg>
+              聯絡我
+            </a>
+          </div>
+
+          <dl class="hero-meta" aria-label="網站重點">
+            <div>
+              <dt>Focus</dt>
+              <dd>Product, Web & Writing</dd>
+            </div>
+            <div>
+              <dt>Base</dt>
+              <dd>Taipei</dd>
+            </div>
+            <div>
+              <dt>Style</dt>
+              <dd>Clear, useful, human</dd>
+            </div>
+          </dl>
+        </div>
+      </section>
+
+      <section class="intro-band" aria-label="個人摘要">
+        <div class="section-inner intro-grid reveal">
+          <p>
+            我喜歡把複雜的問題拆成清楚的結構，再做成能被理解、使用與持續改進的作品。
+          </p>
+          <a class="text-link" href="#contact">開始聊聊</a>
+        </div>
+      </section>
+
+      <section class="section" id="about" aria-labelledby="about-title">
+        <div class="section-inner split-layout">
+          <div class="section-heading reveal">
+            <p class="kicker">About</p>
+            <h2 id="about-title">用產品思維整理資訊，用設計把重點留下來。</h2>
+          </div>
+          <div class="body-copy reveal">
+            <p>
+              這是一個為個人品牌、作品集與職涯介紹準備的網站。你可以放上自己的專案、文章、履歷與聯絡方式，讓第一次認識你的人快速知道你在做什麼、擅長什麼，以及適合如何合作。
+            </p>
+            <p>
+              頁面採用靜態 HTML、CSS 與 JavaScript 製作，不需要後端或打包工具，適合直接部署到 GitHub Pages。
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <section class="section section-muted" id="work" aria-labelledby="work-title">
+        <div class="section-inner">
+          <div class="section-heading narrow reveal">
+            <p class="kicker">Selected Work</p>
+            <h2 id="work-title">近期可以展示的作品方向。</h2>
+          </div>
+
+          <div class="project-grid">
+            <article class="project-card reveal">
+              <div class="project-media project-media-teal" aria-hidden="true">
+                <span>01</span>
+              </div>
+              <div class="project-content">
+                <p class="project-type">Website</p>
+                <h3>Personal Brand System</h3>
+                <p>
+                  建立一頁式個人網站，整理定位、作品、能力與聯絡入口。
+                </p>
+              </div>
+            </article>
+
+            <article class="project-card reveal">
+              <div class="project-media project-media-coral" aria-hidden="true">
+                <span>02</span>
+              </div>
+              <div class="project-content">
+                <p class="project-type">Product</p>
+                <h3>Launch Dashboard</h3>
+                <p>
+                  用清楚的視覺層級追蹤里程碑、任務狀態與重要指標。
+                </p>
+              </div>
+            </article>
+
+            <article class="project-card reveal">
+              <div class="project-media project-media-sage" aria-hidden="true">
+                <span>03</span>
+              </div>
+              <div class="project-content">
+                <p class="project-type">Content</p>
+                <h3>Knowledge Publishing Flow</h3>
+                <p>
+                  把零散筆記整理成穩定輸出的文章、簡報與資料庫。
+                </p>
+              </div>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section class="section" id="skills" aria-labelledby="skills-title">
+        <div class="section-inner split-layout">
+          <div class="section-heading reveal">
+            <p class="kicker">Skills</p>
+            <h2 id="skills-title">適合放上你最想被看見的能力。</h2>
+          </div>
+          <div class="skills-panel reveal">
+            <div class="skill-group">
+              <h3>Strategy</h3>
+              <p>需求整理、產品定位、使用者流程、內容架構</p>
+            </div>
+            <div class="skill-group">
+              <h3>Design</h3>
+              <p>介面設計、品牌語氣、簡報視覺、資訊層級</p>
+            </div>
+            <div class="skill-group">
+              <h3>Build</h3>
+              <p>網站架設、前端開發、自動化流程、GitHub Pages</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="section section-muted" id="posts" aria-labelledby="posts-title">
+        <div class="section-inner">
+          <div class="section-heading narrow reveal">
+            <p class="kicker">Writing</p>
+            <h2 id="posts-title">最新貼文。</h2>
+            <p class="section-note">
+              文章由 GitHub repo 裡的 Markdown 檔案產生；只有擁有寫入權限的人可以發布。
+            </p>
+          </div>
+
+          <div class="post-preview-grid" data-latest-posts>
+            <p class="post-loading">貼文載入中。</p>
+          </div>
+
+          <a class="text-link dark-link" href="./blog/">看全部貼文</a>
+        </div>
+      </section>
+
+      <section class="contact-section" id="contact" aria-labelledby="contact-title">
+        <div class="section-inner contact-layout reveal">
+          <div>
+            <p class="kicker">Contact</p>
+            <h2 id="contact-title">一起把下一個想法做成可分享的作品。</h2>
+          </div>
+          <div class="contact-actions">
+            <a class="button button-primary" href="mailto:hello@example.com">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M4 6h16v12H4z" />
+                <path d="m4 7 8 6 8-6" />
+              </svg>
+              hello@example.com
+            </a>
+            <button
+              class="button button-secondary"
+              type="button"
+              data-copy-email="hello@example.com"
+            >
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M8 8h11v11H8z" />
+                <path d="M5 15H4V4h11v1" />
+              </svg>
+              複製 Email
+            </button>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <div class="section-inner footer-inner">
+        <p>© <span id="year"></span> Sam Hsiao</p>
+        <a href="#top">回到上方</a>
+      </div>
+    </footer>
+
+    <div class="toast" role="status" aria-live="polite"></div>
+    <script src="./script.js"></script>
+  </body>
+</html>
