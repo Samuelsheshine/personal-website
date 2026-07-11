@@ -1,6 +1,6 @@
 # Sam Hsiao Personal Website
 
-這是一個可直接部署到 GitHub Pages 的靜態個人網站，包含可新增文章的部落格。內容使用 HTML、CSS 與 JavaScript，不需要後端服務。
+這是一個可直接部署到 GitHub Pages 的靜態個人網站，包含可新增文章的部落格與可新增專案的 Projects & Directions。內容使用 HTML、CSS 與 JavaScript，不需要後端服務。
 
 ## 誰可以新增貼文
 
@@ -12,7 +12,8 @@
 - `styles.css`：調整顏色、版面與響應式樣式。
 - `assets/hero-workspace.png`：首頁主視覺圖。
 - `content/posts/`：新增或修改貼文。
-- `scripts/build-posts.js`：把 Markdown 貼文轉成網站頁面。
+- `content/projects/`：新增或修改專案頁。
+- `scripts/build-posts.js`：把 Markdown 貼文與專案轉成網站頁面。
 - `.github/workflows/pages.yml`：推到 GitHub 後自動部署到 GitHub Pages。
 
 ## 新增貼文
@@ -35,6 +36,42 @@ slug: my-first-post
 
 5. 按 `Commit changes`。GitHub Actions 會自動重新部署網站。
 
+## 新增 Project
+
+1. 到 GitHub repository 的 `content/projects` 資料夾。
+2. 點 `Add file` > `Create new file`。
+3. 檔名可以使用 `04-project-slug.md`，例如 `04-my-new-project.md`。
+4. 貼上以下格式並修改內容：
+
+```md
+---
+title: 我的新專案
+slug: my-new-project
+category: Robotics
+status: In progress
+year: 2026
+role: Project owner
+stack: Tool A, Tool B, Topic C
+order: 4
+excerpt: 這是一段會出現在專案卡片上的摘要。
+---
+
+## 專案背景
+
+這裡開始寫專案內容。
+
+## 目前進度
+
+- 已完成的事情
+- 正在處理的事情
+
+## 下一步
+
+下一個要驗證或補上的內容。
+```
+
+5. 按 `Commit changes`。首頁專案卡、`/projects/` 專案列表和專案內頁會在 GitHub Actions 部署後更新。
+
 ## 發布到 GitHub Pages
 
 1. 在 GitHub 建立一個新的 repository，例如 `personal-website`。
@@ -45,7 +82,7 @@ slug: my-first-post
 
 ## 本機預覽
 
-先產生貼文頁：
+先產生貼文與專案頁：
 
 ```bash
 node scripts/build-posts.js

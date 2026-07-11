@@ -3,10 +3,12 @@ const path = require("node:path");
 const crypto = require("node:crypto");
 
 const rootDir = path.resolve(__dirname, "..");
-const contentDir = path.join(rootDir, "content", "posts");
+const postsContentDir = path.join(rootDir, "content", "posts");
+const projectsContentDir = path.join(rootDir, "content", "projects");
 const distDir = path.join(rootDir, "dist");
 const postsOutputDir = path.join(distDir, "posts");
 const blogOutputDir = path.join(distDir, "blog");
+const projectsOutputDir = path.join(distDir, "projects");
 const staticEntries = ["index.html", "styles.css", "script.js", "favicon.svg", ".nojekyll", "assets"];
 
 function ensureDir(dir) {
@@ -204,13 +206,13 @@ function formatDate(date) {
 }
 
 function readPosts() {
-  if (!fs.existsSync(contentDir)) return [];
+  if (!fs.existsSync(postsContentDir)) return [];
 
   return fs
-    .readdirSync(contentDir)
+    .readdirSync(postsContentDir)
     .filter((file) => file.endsWith(".md"))
     .map((file) => {
-      const fullPath = path.join(contentDir, file);
+      const fullPath = path.join(postsContentDir, file);
       const source = fs.readFileSync(fullPath, "utf8");
       const { data, body } = parseFrontMatter(source);
       const title = data.title || file.replace(/\.md$/, "");
@@ -237,6 +239,45 @@ function readPosts() {
     .sort((a, b) => b.date - a.date);
 }
 
+function readProjects() {
+  if (!fs.existsSync(projectsContentDir)) return [];
+
+  return fs
+    .readdirSync(projectsContentDir)
+    .filter((file) => file.endsWith(".md"))
+    .map((file) => {
+      const fullPath = path.join(projectsContentDir, file);
+      const source = fs.readFileSync(fullPath, "utf8");
+      const { data, body } = parseFrontMatter(source);
+      const title = data.title || file.replace(/\.md$/, "");
+      const slug = slugify(data.slug || file.replace(/^\d{2}-/, "").replace(/\.md$/, ""));
+      const excerpt = data.excerpt || `${stripMarkdown(body).slice(0, 120)}...`;
+      const stack = data.stack
+        ? data.stack.split(",").map((item) => item.trim()).filter(Boolean)
+        : [];
+      const order = Number.parseInt(data.order || "999", 10);
+      const isDraft = data.draft === "true" || data.published === "false";
+
+      return {
+        title,
+        slug,
+        excerpt,
+        body,
+        order: Number.isNaN(order) ? 999 : order,
+        category: data.category || "Project",
+        status: data.status || "In progress",
+        year: data.year || "",
+        role: data.role || "",
+        stack,
+        isDraft,
+        sourceFile: file,
+        url: `./projects/${slug}/`,
+      };
+    })
+    .filter((project) => !project.isDraft)
+    .sort((a, b) => a.order - b.order || a.title.localeCompare(b.title, "zh-Hant"));
+}
+
 function pageShell({ title, description, content, relativeRoot = "." }) {
   return `<!doctype html>
 <html lang="zh-Hant">
@@ -253,14 +294,14 @@ function pageShell({ title, description, content, relativeRoot = "." }) {
 
     <header class="site-header">
       <nav class="nav" aria-label="主要導覽">
-        <a class="brand" href="${relativeRoot}/" aria-label="Sam Hsiao 首頁">
+        <a class="brand" href="${relativeRoot}/" aria-label="蕭士翔首頁">
           <span class="brand-mark">SH</span>
-          <span>Sam Hsiao</span>
+          <span>蕭士翔</span>
         </a>
 
         <div class="nav-menu" id="nav-menu">
           <a href="${relativeRoot}/#about">關於</a>
-          <a href="${relativeRoot}/#work">作品</a>
+          <a href="${relativeRoot}/projects/">專題</a>
           <a href="${relativeRoot}/#skills">能力</a>
           <a href="${relativeRoot}/blog/">貼文</a>
           <a href="${relativeRoot}/#contact">聯絡</a>
@@ -274,7 +315,7 @@ function pageShell({ title, description, content, relativeRoot = "." }) {
 
     <footer class="site-footer">
       <div class="section-inner footer-inner">
-        <p>© <span id="year"></span> Sam Hsiao</p>
+        <p>© <span id="year"></span> 蕭士翔</p>
         <a href="${relativeRoot}/">回首頁</a>
       </div>
     </footer>
@@ -301,8 +342,8 @@ function renderBlogIndex(posts) {
     : '<p class="post-loading">目前還沒有貼文。</p>';
 
   return pageShell({
-    title: "貼文 | Sam Hsiao",
-    description: "Sam Hsiao 的最新貼文與專案紀錄。",
+    title: "貼文 | 蕭士翔",
+    description: "蕭士翔的最新貼文與學習紀錄。",
     relativeRoot: "..",
     content: `<section class="blog-hero">
         <div class="section-inner">
@@ -320,9 +361,90 @@ function renderBlogIndex(posts) {
   });
 }
 
+function projectMediaClass(index) {
+  return ["project-media-teal", "project-media-coral", "project-media-sage"][index % 3];
+}
+
+function renderProjectsIndex(projects) {
+  const list = projects.length
+    ? projects
+        .map(
+          (project, index) => `<a class="project-card project-card-link" href="./${project.slug}/">
+            <div class="project-media ${projectMediaClass(index)}" aria-hidden="true">
+              <span>${String(index + 1).padStart(2, "0")}</span>
+            </div>
+            <div class="project-content">
+              <p class="project-type">${escapeHtml(project.category)}</p>
+              <h3>${escapeHtml(project.title)}</h3>
+              <p>${escapeHtml(project.excerpt)}</p>
+            </div>
+          </a>`,
+        )
+        .join("\n")
+    : '<p class="post-loading">目前還沒有專案。</p>';
+
+  return pageShell({
+    title: "Projects & Directions | 蕭士翔",
+    description: "蕭士翔的專題、交換準備與學習系統紀錄。",
+    relativeRoot: "..",
+    content: `<section class="blog-hero">
+        <div class="section-inner">
+          <p class="kicker">Projects & Directions</p>
+          <h1>專題與方向</h1>
+          <p>這裡整理和貼文不同的 project pages：每個專案都有自己的背景、目標、進度、工具與下一步。</p>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="section-inner project-list">
+          ${list}
+        </div>
+      </section>`,
+  });
+}
+
+function renderProject(project) {
+  const stackText = project.stack.length ? project.stack.join(", ") : "持續整理中";
+
+  return pageShell({
+    title: `${project.title} | 蕭士翔`,
+    description: project.excerpt,
+    relativeRoot: "../..",
+    content: `<article>
+        <header class="article-header">
+          <div class="section-inner">
+            <p class="post-meta">${escapeHtml(project.category)} / ${escapeHtml(project.status)}</p>
+            <h1>${escapeHtml(project.title)}</h1>
+            <p>${escapeHtml(project.excerpt)}</p>
+            <div class="project-facts" aria-label="專案資訊">
+              <div class="project-fact">
+                <strong>年份</strong>
+                <span>${escapeHtml(project.year || "持續更新")}</span>
+              </div>
+              <div class="project-fact">
+                <strong>角色</strong>
+                <span>${escapeHtml(project.role || "Owner")}</span>
+              </div>
+              <div class="project-fact">
+                <strong>工具 / 主題</strong>
+                <span>${escapeHtml(stackText)}</span>
+              </div>
+            </div>
+          </div>
+        </header>
+
+        <div class="article-body">
+          <div class="section-inner prose">
+            ${renderMarkdown(project.body)}
+          </div>
+        </div>
+      </article>`,
+  });
+}
+
 function renderPost(post) {
   return pageShell({
-    title: `${post.title} | Sam Hsiao`,
+    title: `${post.title} | 蕭士翔`,
     description: post.excerpt,
     relativeRoot: "../..",
     content: `<article>
@@ -348,15 +470,24 @@ function build() {
   staticEntries.forEach(copyEntry);
   ensureDir(postsOutputDir);
   ensureDir(blogOutputDir);
+  ensureDir(projectsOutputDir);
 
   const posts = readPosts();
+  const projects = readProjects();
 
   fs.writeFileSync(path.join(blogOutputDir, "index.html"), renderBlogIndex(posts));
+  fs.writeFileSync(path.join(projectsOutputDir, "index.html"), renderProjectsIndex(projects));
 
   posts.forEach((post) => {
     const postDir = path.join(postsOutputDir, post.slug);
     ensureDir(postDir);
     fs.writeFileSync(path.join(postDir, "index.html"), renderPost(post));
+  });
+
+  projects.forEach((project) => {
+    const projectDir = path.join(projectsOutputDir, project.slug);
+    ensureDir(projectDir);
+    fs.writeFileSync(path.join(projectDir, "index.html"), renderProject(project));
   });
 
   const manifest = posts.map((post) => ({
@@ -369,7 +500,19 @@ function build() {
   }));
 
   fs.writeFileSync(path.join(distDir, "posts.json"), JSON.stringify(manifest, null, 2));
-  console.log(`Built ${posts.length} post(s) into ${distDir}`);
+
+  const projectsManifest = projects.map((project) => ({
+    title: project.title,
+    category: project.category,
+    status: project.status,
+    year: project.year,
+    excerpt: project.excerpt,
+    slug: project.slug,
+    url: `./projects/${project.slug}/`,
+  }));
+
+  fs.writeFileSync(path.join(distDir, "projects.json"), JSON.stringify(projectsManifest, null, 2));
+  console.log(`Built ${posts.length} post(s) and ${projects.length} project(s) into ${distDir}`);
 }
 
 build();
