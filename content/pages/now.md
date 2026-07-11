@@ -1,0 +1,35 @@
+---
+title: Now
+slug: now
+kicker: Current Focus
+updated: 2026-07-11
+description: 我目前投入的課業、專題、交換準備與工具學習，以及接下來準備驗證的工作。
+---
+
+## Academic Focus
+
+- 控制工程與機器人
+- 系統建模與工程數學
+- 流體力學與機械工程基礎
+- 把課堂方法連結到可展示的工程專題
+
+## Current Projects
+
+- **2-DOF planar robot singularity analysis**：整理模型、Jacobian 指標與 pseudoinverse / DLS 比較方法
+- **Cooperative agricultural harvesting robots**：規劃雙機分工、ROS 節點與整合路線
+- **Personal engineering knowledge system**：用 Markdown、GitHub、ChatGPT 與 Codex 維護公開紀錄
+
+## Exchange Preparation
+
+- 準備 2026 年 9 月至 2027 年 2 月的 Nagoya University NUPACE 交換
+- 規劃英語授課課程、學分與抵免方向
+- 整理簽證、住宿、保險與抵達前事項
+- 持續練習英文與日文溝通
+
+## Current Tools
+
+MATLAB、Python、ROS、Git、GitHub、VS Code、Ubuntu、Markdown、ChatGPT、Codex。
+
+## Next Checkpoint
+
+優先補齊 2-DOF 專題的可重現模擬、圖表與方法比較，再將農業雙機專題的架構從提案推進到單機移動與感測器整合。

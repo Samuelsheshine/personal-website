@@ -1,6 +1,6 @@
 # Sam Hsiao Personal Website
 
-這是一個可直接部署到 GitHub Pages 的靜態個人網站，包含可新增文章的部落格與可新增專案的 Projects & Directions。內容使用 HTML、CSS 與 JavaScript，不需要後端服務。
+這是一個可直接部署到 GitHub Pages 的靜態工程作品集，包含 Markdown 貼文、專案 case studies、Now、Academic Journey 與 Resume。內容使用 HTML、CSS 與 JavaScript，不需要後端服務。
 
 ## 誰可以新增貼文
 
@@ -13,6 +13,7 @@
 - `assets/hero-workspace.png`：首頁主視覺圖。
 - `content/posts/`：新增或修改貼文。
 - `content/projects/`：新增或修改專案頁。
+- `content/pages/`：修改 Now、Academic Journey 與 Resume 等固定內容頁。
 - `scripts/build-posts.js`：把 Markdown 貼文與專案轉成網站頁面。
 - `.github/workflows/pages.yml`：推到 GitHub 後自動部署到 GitHub Pages。
 
@@ -48,7 +49,7 @@ slug: my-first-post
 title: 我的新專案
 slug: my-new-project
 category: Robotics
-status: In progress
+status: In Development
 year: 2026
 role: Project owner
 stack: Tool A, Tool B, Topic C
@@ -71,6 +72,28 @@ excerpt: 這是一段會出現在專案卡片上的摘要。
 ```
 
 5. 按 `Commit changes`。首頁專案卡、`/projects/` 專案列表和專案內頁會在 GitHub Actions 部署後更新。
+
+`status` 建議統一使用：`Planning`、`In Development`、`Testing`、`Completed`、`Ongoing` 或 `Archived`。尚未公開的程式碼、報告、影片或履歷 PDF 不要先放空連結。
+
+## 固定內容頁
+
+`content/pages/*.md` 會自動產生同名路徑，例如 `content/pages/now.md` 會建立 `/now/`。Front matter 格式如下：
+
+```md
+---
+title: Page title
+slug: page-slug
+kicker: Section label
+updated: 2026-07-11
+description: 這個頁面的搜尋摘要。
+---
+
+## 第一個段落
+
+頁面內容。
+```
+
+建置時也會自動產生 `sitemap.xml`、`robots.txt`、`404.html`、貼文與專案 JSON manifest。
 
 ## 發布到 GitHub Pages
 

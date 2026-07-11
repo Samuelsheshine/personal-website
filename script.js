@@ -96,7 +96,7 @@ async function loadLatestPosts() {
       .map(
         (post) => `
           <article class="post-card">
-            <time datetime="${escapeHtml(post.date)}">${escapeHtml(post.displayDate)}</time>
+            <p class="post-meta">${escapeHtml(post.category || "Learning")} · ${escapeHtml(post.displayDate)} · ${escapeHtml(post.readingTime || 1)} min read</p>
             <h3>${escapeHtml(post.title)}</h3>
             <p>${escapeHtml(post.excerpt)}</p>
             <a href="${escapeHtml(post.url)}">閱讀文章</a>
