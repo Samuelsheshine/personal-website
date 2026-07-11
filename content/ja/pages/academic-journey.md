@@ -1,7 +1,7 @@
 ---
 title: 学習の歩み
 slug: academic-journey
-kicker: Coursework to Practice
+kicker: 授業から実践へ
 updated: 2026-07-11
 description: 機械工学の授業を制御、ロボティクス、システム実装へつなげる学習記録です。
 ---

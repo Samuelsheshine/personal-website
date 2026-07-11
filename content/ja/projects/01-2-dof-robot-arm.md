@@ -5,27 +5,27 @@ category: ロボティクス・制御
 status: 開発中
 year: 2026
 role: プロジェクト担当
-stack: MATLAB, Robotics, Jacobian, Pseudoinverse, DLS
+stack: MATLAB, ロボティクス, Jacobian, 擬似逆行列, DLS
 order: 1
-excerpt: 2R平面マニピュレータの特異姿勢付近で、Jacobian pseudoinverseとdamped least squaresを比較します。
+excerpt: 2R平面マニピュレータの特異姿勢付近で、Jacobian擬似逆行列と減衰最小二乗法を比較します。
 ---
 
 ## 概要
 
-2R平面マニピュレータが特異姿勢に近づくときの数値的・物理的挙動を調べます。運動学モデルとJacobianを導出し、特異境界を特定して、pseudoinverseとdamped least squares（DLS）を比較します。
+2R平面マニピュレータが特異姿勢に近づくときの数値的・物理的挙動を調べます。運動学モデルとJacobianを導出し、特異境界を特定して、擬似逆行列と減衰最小二乗法（DLS）を比較します。
 
 現在は方法と検証計画を整理している段階です。最終的な数値、図、結論は再現可能なMATLABシミュレーションに基づいて掲載します。
 
 ## 問題
 
-特異点付近ではJacobianのrankが低下し、condition numberが大きくなります。小さな手先速度指令でも非常に大きな関節速度が必要になり、数値計算と実機動作が不安定になる可能性があります。
+特異点付近ではJacobianのランクが低下し、条件数が大きくなります。小さな手先速度指令でも非常に大きな関節速度が必要になり、数値計算と実機動作が不安定になる可能性があります。
 
 ## 目的
 
 - 順運動学とJacobianを導出する
 - 特異姿勢と作業空間の境界を特定する
-- 同一軌道でpseudoinverseとDLSを比較する
-- condition number、manipulability、関節速度、追従誤差を評価する
+- 同一軌道で擬似逆行列とDLSを比較する
+- 条件数、可操作度、関節速度、追従誤差を評価する
 - 安定性と精度のトレードオフを説明する
 
 ## 検証手順

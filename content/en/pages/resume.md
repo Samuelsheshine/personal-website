@@ -3,7 +3,7 @@ title: Resume
 slug: resume
 kicker: Profile & Experience
 updated: 2026-07-11
-description: Education, engineering projects, technical tools, languages, and exchange experience of Shih-Hsiang Hsiao.
+description: Education, engineering projects, technical tools, languages, and exchange experience of HSIAO SHIH HSIANG.
 ---
 
 ## Profile

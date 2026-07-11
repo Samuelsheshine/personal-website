@@ -5,12 +5,20 @@ const toast = document.querySelector(".toast");
 const copyEmailButton = document.querySelector("[data-copy-email]");
 const year = document.querySelector("#year");
 const latestPosts = document.querySelector("[data-latest-posts]");
-const languageLinks = document.querySelectorAll("[data-language]");
+const languageSelect = document.querySelector(".language-select");
+const pageLanguage = document.documentElement.lang === "zh-Hant"
+  ? "zh"
+  : document.documentElement.lang;
+const localizedText = {
+  zh: { noPosts: "目前還沒有文章。", read: "閱讀文章", preview: "文章需要透過本機伺服器或 GitHub Pages 預覽。" },
+  en: { noPosts: "No articles yet.", read: "Read article", preview: "Articles require a local server or GitHub Pages preview." },
+  ja: { noPosts: "記事はまだありません。", read: "記事を読む", preview: "記事の表示にはローカルサーバーまたはGitHub Pagesが必要です。" },
+}[pageLanguage] || {};
 
-languageLinks.forEach((link) => {
-  link.addEventListener("click", () => {
-    window.localStorage.setItem("preferred-language", link.dataset.language);
-  });
+languageSelect?.addEventListener("change", () => {
+  const option = languageSelect.selectedOptions[0];
+  window.localStorage.setItem("preferred-language", option.dataset.language);
+  window.location.assign(option.value);
 });
 
 try {
@@ -20,8 +28,8 @@ try {
     : document.documentElement.lang;
 
   if (preferredLanguage && preferredLanguage !== currentLanguage) {
-    const preferredLink = document.querySelector(`[data-language="${preferredLanguage}"]`);
-    if (preferredLink) window.location.replace(preferredLink.href);
+    const preferredOption = document.querySelector(`[data-language="${preferredLanguage}"]`);
+    if (preferredOption) window.location.replace(preferredOption.value);
   }
 } catch {
   // Language switching still works when storage is unavailable.
@@ -35,7 +43,7 @@ if (navToggle) {
   navToggle.addEventListener("click", () => {
     const isOpen = body.classList.toggle("nav-open");
     navToggle.setAttribute("aria-expanded", String(isOpen));
-    navToggle.setAttribute("aria-label", isOpen ? "關閉選單" : "開啟選單");
+    navToggle.setAttribute("aria-label", isOpen ? navToggle.dataset.labelClose : navToggle.dataset.labelOpen);
   });
 }
 
@@ -43,7 +51,7 @@ navLinks.forEach((link) => {
   link.addEventListener("click", () => {
     body.classList.remove("nav-open");
     navToggle?.setAttribute("aria-expanded", "false");
-    navToggle?.setAttribute("aria-label", "開啟選單");
+    navToggle?.setAttribute("aria-label", navToggle.dataset.labelOpen);
   });
 });
 
@@ -108,7 +116,7 @@ async function loadLatestPosts() {
 
     const posts = await response.json();
     if (!Array.isArray(posts) || posts.length === 0) {
-      latestPosts.innerHTML = '<p class="post-loading">目前還沒有貼文。</p>';
+      latestPosts.innerHTML = `<p class="post-loading">${localizedText.noPosts}</p>`;
       return;
     }
 
@@ -120,14 +128,13 @@ async function loadLatestPosts() {
             <p class="post-meta">${escapeHtml(post.category || "Learning")} · ${escapeHtml(post.displayDate)} · ${escapeHtml(post.readingTime || 1)} min read</p>
             <h3>${escapeHtml(post.title)}</h3>
             <p>${escapeHtml(post.excerpt)}</p>
-            <a href="${escapeHtml(post.url)}">閱讀文章</a>
+            <a href="${escapeHtml(post.url)}">${localizedText.read}</a>
           </article>
         `,
       )
       .join("");
   } catch {
-    latestPosts.innerHTML =
-      '<p class="post-loading">貼文需要透過本機伺服器或 GitHub Pages 預覽。</p>';
+    latestPosts.innerHTML = `<p class="post-loading">${localizedText.preview}</p>`;
   }
 }
 

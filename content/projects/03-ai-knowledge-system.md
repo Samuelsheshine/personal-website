@@ -1,20 +1,20 @@
 ---
-title: AI-Assisted Engineering Knowledge System
+title: AI 輔助工程知識系統
 slug: ai-knowledge-system
-category: Learning System
-status: Ongoing
+category: 學習系統
+status: 持續進行
 year: 2026
-role: Workflow designer / maintainer
+role: 工作流程設計與維護
 stack: ChatGPT, Codex, GitHub, Markdown, GitHub Pages
 order: 4
 excerpt: 設計、驗證並維護一套 AI 輔助工程工作流，將零散資料轉成可追蹤、可版本控制的專題與文章。
 ---
 
-## Overview
+## 系統概述
 
 這個系統的重點不是「有使用 AI」，而是設計一個可以重複執行、人工檢查並持續改善的流程。ChatGPT 用於釐清與結構化，Codex 協助在既有 repository 中實作，Markdown 與 GitHub 則保存來源、版本和公開成果。
 
-## Workflow
+## 工作流程
 
 ```
 Capture
@@ -31,49 +31,49 @@ Review
   -> verify facts, links, build output and reflection
 ```
 
-## Repository Structure
+## 儲存庫結構
 
 ```
-content/posts/       writing in Markdown
-content/projects/    project case studies
-content/pages/       Now, Resume and Academic Journey
-scripts/             static-site build logic
-assets/              public images and verified documents
-dist/                generated deployment output
+content/posts/       Markdown 文章
+content/projects/    專題案例
+content/pages/       固定內容頁
+scripts/             靜態網站建置邏輯
+assets/              公開圖片與已確認文件
+dist/                產生的部署輸出
 ```
 
-## Content Update Process
+## 內容更新流程
 
-1. Capture the original question, source or project change
-2. Ask AI to organize the problem and expose assumptions
-3. Keep factual claims separate from suggestions and placeholders
-4. Update Markdown or site code in a small, reviewable scope
-5. Run the build and inspect generated pages
-6. Check links, responsive layout and sensitive information
-7. Commit only the intended source files; deployment is generated automatically
+1. 收集原始問題、資料來源或專題變更
+2. 請 AI 整理問題並揭露假設
+3. 將事實陳述與建議、預留內容分開
+4. 以小而可檢查的範圍更新 Markdown 或網站程式
+5. 執行建置並檢查產生的頁面
+6. 檢查連結、響應式版面與敏感資訊
+7. 只提交預定的來源檔，部署內容由系統自動產生
 
-## Verification Rules
+## 查核規則
 
-| Content type | AI can help with | Manual verification required |
+| 內容類型 | AI 可協助的部分 | 必須人工查核的部分 |
 |---|---|---|
-| Engineering explanation | Structure and alternative explanations | Equations, units, assumptions and simulation results |
-| Exchange information | Checklist and question generation | Official dates, visa rules and university requirements |
-| Website code | Implementation and refactoring | Build output, links, accessibility and deployment behavior |
-| Personal profile | Editing and translation | Accuracy, privacy and whether the claim is appropriate to publish |
+| 工程說明 | 結構整理與替代解釋 | 方程式、單位、假設與模擬結果 |
+| 交換資訊 | 檢查清單與問題整理 | 官方日期、簽證規定與大學要求 |
+| 網站程式 | 實作與重構 | 建置輸出、連結、無障礙與部署行為 |
+| 個人資料 | 編輯與翻譯 | 正確性、隱私及內容是否適合公開 |
 
-## AI Limitations
+## AI 的限制
 
-- AI can produce fluent but unsupported claims
-- Generated code may work in isolation but conflict with the existing build flow
-- Summaries can lose dates, units or the distinction between plans and completed work
-- Private files should not become public merely because they are useful source material
+- AI 可能產生流暢但缺乏依據的陳述
+- 產生的程式可能單獨可用，卻與現有建置流程衝突
+- 摘要可能遺漏日期、單位，或混淆計畫與已完成工作
+- 私人檔案不能只因適合作為參考資料就被公開
 
-## Before and After
+## 使用前後比較
 
-**Before:** Notes, screenshots and decisions were easy to lose; updating one page often meant manually repeating content.
+**使用前：** 筆記、截圖與決策容易散失，更新頁面時也常需要手動重複內容。
 
-**Current workflow:** Structured Markdown is the source of truth, the build script creates consistent pages, and Git records what changed. Time savings have not yet been measured, so this page does not claim a numerical improvement.
+**目前流程：** 以結構化 Markdown 作為內容來源，建置程式產生一致頁面，Git 則記錄所有變更。由於尚未量測節省的時間，本頁不宣稱具體效率數字。
 
-## Next Step
+## 下一步
 
-Add a lightweight content checklist for sources, last-updated dates, privacy review and broken-link validation, then measure whether the workflow actually reduces repeated work.
+新增包含資料來源、最後更新日期、隱私檢查與失效連結驗證的內容清單，再量測這套流程是否真的減少重複工作。

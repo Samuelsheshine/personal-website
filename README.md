@@ -105,6 +105,19 @@ description: 這個頁面的搜尋摘要。
 
 三種語言使用相同的 `slug`，語言切換才能留在同一頁。例如三個版本的 2-DOF 專題都必須使用 `slug: 2-dof-robot-arm`。新增中文專題後，如果翻譯尚未完成，不要先建立空白語言頁；完成翻譯後再將對應 Markdown 加入 `content/en/projects/` 與 `content/ja/projects/`。
 
+## 興趣頁與收合內容
+
+興趣內容位於三個語系的 `pages/interests.md`。長清單可以使用以下語法產生可收合區塊：
+
+```md
+:::details 區塊標題
+- 第一個項目
+- 第二個項目
+:::
+```
+
+三語版本請維持相同的 `slug: interests`，語言下拉選單才會切換到對應頁面。
+
 ## 發布到 GitHub Pages
 
 1. 在 GitHub 建立一個新的 repository，例如 `personal-website`。

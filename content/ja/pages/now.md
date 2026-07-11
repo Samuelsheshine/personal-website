@@ -1,7 +1,7 @@
 ---
-title: Now
+title: 現在の取り組み
 slug: now
-kicker: Current Focus
+kicker: 現在の重点
 updated: 2026-07-11
 description: 現在の学業、工学プロジェクト、留学準備、次に検証する項目をまとめます。
 ---

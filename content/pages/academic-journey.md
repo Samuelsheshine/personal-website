@@ -1,55 +1,55 @@
 ---
-title: Academic Journey
+title: 學習歷程
 slug: academic-journey
-kicker: Coursework to Practice
+kicker: 從課程到實作
 updated: 2026-07-11
 description: 我如何把機械工程課程中的觀念，逐步連結到控制、機器人與系統實作。
 ---
 
-## Engineering Foundations
+## 工程基礎
 
-### Engineering Mathematics
+### 工程數學
 
-**What I learned:** 用矩陣、微分方程與數值方法描述工程問題。
+**我學到的內容：** 用矩陣、微分方程與數值方法描述工程問題。
 
-**How I apply it:** 用於機械手臂運動學、Jacobian 分析與模擬結果解讀。
+**如何應用：** 用於機械手臂運動學、Jacobian 分析與模擬結果解讀。
 
-**Related project:** [2-DOF Singularity Analysis](../projects/2-dof-robot-arm/)
+**相關專題：** [2-DOF 奇異點分析](../projects/2-dof-robot-arm/)
 
-### Dynamics and Mechanics
+### 動力學與力學
 
-**What I learned:** 從受力、運動與機構關係建立物理模型。
+**我學到的內容：** 從受力、運動與機構關係建立物理模型。
 
-**How I apply it:** 在設計機器人架構時，先確認自由度、運動限制與機構行為，再決定控制方式。
+**如何應用：** 在設計機器人架構時，先確認自由度、運動限制與機構行為，再決定控制方式。
 
-## Electronics and Mechanisms
+## 電子與機構
 
-### Applied Electronics and Digital Logic
+### 應用電子與數位邏輯
 
-**What I learned:** 感測、控制訊號與基本數位系統的關係。
+**我學到的內容：** 感測、控制訊號與基本數位系統的關係。
 
-**How I apply it:** 規劃 Raspberry Pi、Arduino 或 ESP32 與感測器、馬達驅動器之間的介面。
+**如何應用：** 規劃 Raspberry Pi、Arduino 或 ESP32 與感測器、馬達驅動器之間的介面。
 
-**Related project:** [Cooperative Agricultural Harvesting Robots](../projects/cooperative-agricultural-robots/)
+**相關專題：** [農業採收雙機協作系統](../projects/cooperative-agricultural-robots/)
 
-### Mechanisms and MATLAB Modeling
+### 機構與 MATLAB 建模
 
-**What I learned:** 用幾何與程式描述機構運動，並將數學模型轉成可視化結果。
+**我學到的內容：** 用幾何與程式描述機構運動，並將數學模型轉成可視化結果。
 
-**How I apply it:** 建立 2R 平面機械手臂模型、工作空間與測試軌跡。
+**如何應用：** 建立 2R 平面機械手臂模型、工作空間與測試軌跡。
 
-## Control and Robotics
+## 控制與機器人
 
-### Control Engineering
+### 控制工程
 
-**What I am connecting:** 系統模型、穩定性、回授與參數選擇之間的工程取捨。
+**正在建立的連結：** 系統模型、穩定性、回授與參數選擇之間的工程取捨。
 
-**Related project:** [2-DOF Singularity Analysis](../projects/2-dof-robot-arm/)
+**相關專題：** [2-DOF 奇異點分析](../projects/2-dof-robot-arm/)
 
-### ROS and Computer Vision
+### ROS 與電腦視覺
 
-**What I am building toward:** 將感知、導航、控制與狀態管理拆成可測試的節點，再逐步整合成雙機系統。
+**正在累積的能力：** 將感知、導航、控制與狀態管理拆成可測試的節點，再逐步整合成雙機系統。
 
-**Related project:** [Cooperative Agricultural Harvesting Robots](../projects/cooperative-agricultural-robots/)
+**相關專題：** [農業採收雙機協作系統](../projects/cooperative-agricultural-robots/)
 
 > 這一頁不是成績單，而是持續整理「學到什麼、用在哪裡、還缺什麼證據」的學習地圖。

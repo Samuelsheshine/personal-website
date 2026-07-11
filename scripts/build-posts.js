@@ -15,21 +15,24 @@ const staticEntries = ["index.html", "styles.css", "script.js", "favicon.svg", "
 const localePrefixes = { zh: "", en: "/en", ja: "/ja" };
 const localeUi = {
   zh: {
-    htmlLang: "zh-Hant", skip: "跳到主要內容", home: "首頁", about: "關於", now: "Now",
-    projects: "專題", journey: "學習歷程", writing: "Writing", resume: "履歷", contact: "聯絡",
+    displayName: "蕭士翔", languageLabel: "語言", languageNames: ["中文", "英文", "日文"], navigationLabel: "主要導覽", closeMenu: "關閉選單",
+    htmlLang: "zh-Hant", skip: "跳到主要內容", home: "首頁", about: "關於", interests: "興趣", now: "近況",
+    projects: "專題", journey: "學習歷程", writing: "文章", resume: "履歷", contact: "聯絡",
     menuOpen: "開啟選單", brand: "蕭士翔首頁", backHome: "回首頁", read: "閱讀文章",
     noPosts: "目前還沒有貼文。", noProjects: "目前還沒有專案。", year: "年份", role: "角色",
-    tools: "工具 / 主題", updating: "持續更新", techLabel: "使用技術", lastUpdated: "Last updated",
+    tools: "工具／主題", updating: "持續更新", techLabel: "使用技術", lastUpdated: "最後更新",
   },
   en: {
-    htmlLang: "en", skip: "Skip to main content", home: "Home", about: "About", now: "Now",
+    displayName: "HSIAO SHIH HSIANG", languageLabel: "Language", languageNames: ["Chinese", "English", "Japanese"], navigationLabel: "Main navigation", closeMenu: "Close menu",
+    htmlLang: "en", skip: "Skip to main content", home: "Home", about: "About", interests: "Interests", now: "Now",
     projects: "Projects", journey: "Academic Journey", writing: "Writing", resume: "Resume", contact: "Contact",
-    menuOpen: "Open menu", brand: "Shih-Hsiang Hsiao home", backHome: "Back to home", read: "Read article",
+    menuOpen: "Open menu", brand: "HSIAO SHIH HSIANG home", backHome: "Back to home", read: "Read article",
     noPosts: "No articles yet.", noProjects: "No projects yet.", year: "Year", role: "Role",
     tools: "Tools / Topics", updating: "Continuously updated", techLabel: "Technologies", lastUpdated: "Last updated",
   },
   ja: {
-    htmlLang: "ja", skip: "メインコンテンツへ", home: "ホーム", about: "プロフィール", now: "Now",
+    displayName: "蕭士翔", languageLabel: "言語", languageNames: ["中国語", "英語", "日本語"], navigationLabel: "メインナビゲーション", closeMenu: "メニューを閉じる",
+    htmlLang: "ja", skip: "メインコンテンツへ", home: "ホーム", about: "プロフィール", interests: "興味", now: "現在",
     projects: "プロジェクト", journey: "学習の歩み", writing: "記事", resume: "履歴", contact: "連絡先",
     menuOpen: "メニューを開く", brand: "蕭士翔ホーム", backHome: "ホームへ戻る", read: "記事を読む",
     noPosts: "記事はまだありません。", noProjects: "プロジェクトはまだありません。", year: "年度", role: "役割",
@@ -165,6 +168,19 @@ function renderMarkdown(markdown) {
 
   for (let index = 0; index < lines.length; index += 1) {
     const line = lines[index];
+    const details = line.match(/^:::details\s+(.+)$/);
+    if (details) {
+      flushAll();
+      const detailLines = [];
+      index += 1;
+      while (index < lines.length && lines[index].trim() !== ":::") {
+        detailLines.push(lines[index]);
+        index += 1;
+      }
+      html.push(`<details class="prose-details"><summary>${inlineMarkdown(details[1])}</summary><div>${renderMarkdown(detailLines.join("\n"))}</div></details>`);
+      continue;
+    }
+
     if (line.trim().startsWith("```")) {
       if (inCode) {
         html.push(`<pre><code>${escapeHtml(codeLines.join("\n"))}</code></pre>`);
@@ -369,9 +385,13 @@ function readProjects(contentDir = projectsContentDir) {
 }
 
 function languageLinks(relativeRoot, route, locale) {
-  return `<div class="language-switcher" aria-label="Language">
-            ${[["zh", "中"], ["en", "EN"], ["ja", "日"]].map(([code, label]) => `<a href="${relativeRoot}${localePrefixes[code]}${route}" lang="${localeUi[code].htmlLang}" data-language="${code}"${code === locale ? ' class="is-active" aria-current="page"' : ""}>${label}</a>`).join("")}
-          </div>`;
+  const ui = localeUi[locale];
+  return `<label class="language-picker">
+            <span>${ui.languageLabel}</span>
+            <select class="language-select" aria-label="${ui.languageLabel}">
+              ${["zh", "en", "ja"].map((code, index) => `<option value="${relativeRoot}${localePrefixes[code]}${route}" data-language="${code}"${code === locale ? " selected" : ""}>${ui.languageNames[index]}</option>`).join("")}
+            </select>
+          </label>`;
 }
 
 function alternateLinks(route) {
@@ -380,7 +400,7 @@ function alternateLinks(route) {
     .join("\n    ");
 }
 
-function pageShell({ title, description, content, relativeRoot = ".", canonicalPath = "/", locale = "zh", route = canonicalPath }) {
+function pageShell({ title, description, content, relativeRoot = ".", canonicalPath = "/", locale = "zh", route = canonicalPath, showLanguage = true }) {
   const ui = localeUi[locale];
   const canonicalUrl = `${siteUrl}${canonicalPath}`;
   return `<!doctype html>
@@ -405,26 +425,29 @@ function pageShell({ title, description, content, relativeRoot = ".", canonicalP
     <a class="skip-link" href="#main">${ui.skip}</a>
 
     <header class="site-header">
-      <nav class="nav" aria-label="Navigation">
+      <nav class="nav" aria-label="${ui.navigationLabel}">
         <a class="brand" href="${relativeRoot}${localePrefixes[locale]}/" aria-label="${ui.brand}">
           <span class="brand-mark">SH</span>
-          <span>蕭士翔</span>
+          <span>${ui.displayName}</span>
         </a>
-
-        <button class="nav-toggle" type="button" aria-expanded="false" aria-controls="nav-menu" aria-label="${ui.menuOpen}">
-          <span></span><span></span><span></span>
-        </button>
 
         <div class="nav-menu" id="nav-menu">
           <a href="${relativeRoot}${localePrefixes[locale]}/">${ui.home}</a>
           <a href="${relativeRoot}${localePrefixes[locale]}/#about">${ui.about}</a>
+          <a href="${relativeRoot}${localePrefixes[locale]}/interests/">${ui.interests}</a>
           <a href="${relativeRoot}${localePrefixes[locale]}/now/">${ui.now}</a>
           <a href="${relativeRoot}${localePrefixes[locale]}/projects/">${ui.projects}</a>
           <a href="${relativeRoot}${localePrefixes[locale]}/academic-journey/">${ui.journey}</a>
           <a href="${relativeRoot}${localePrefixes[locale]}/blog/">${ui.writing}</a>
           <a href="${relativeRoot}${localePrefixes[locale]}/resume/">${ui.resume}</a>
           <a href="${relativeRoot}${localePrefixes[locale]}/#contact">${ui.contact}</a>
-          ${languageLinks(relativeRoot, route, locale)}
+        </div>
+
+        <div class="nav-actions">
+          ${showLanguage ? languageLinks(relativeRoot, route, locale) : ""}
+          <button class="nav-toggle" type="button" aria-expanded="false" aria-controls="nav-menu" aria-label="${ui.menuOpen}" data-label-open="${ui.menuOpen}" data-label-close="${ui.closeMenu}">
+            <span></span><span></span><span></span>
+          </button>
         </div>
       </nav>
     </header>
@@ -435,7 +458,7 @@ function pageShell({ title, description, content, relativeRoot = ".", canonicalP
 
     <footer class="site-footer">
       <div class="section-inner footer-inner">
-        <p>© <span id="year"></span> 蕭士翔</p>
+        <p>© <span id="year"></span> ${ui.displayName}</p>
         <a href="${relativeRoot}${localePrefixes[locale]}/">${ui.backHome}</a>
       </div>
     </footer>
@@ -450,7 +473,7 @@ function renderBlogIndex(posts, locale = "zh", relativeRoot = "..") {
   const prefix = localePrefixes[locale];
   const copy = {
     zh: ["貼文 | 蕭士翔", "蕭士翔的最新貼文與學習紀錄。", "貼文", "我會把作品紀錄、學習筆記與想法整理在這裡。"],
-    en: ["Writing | Shih-Hsiang Hsiao", "Engineering notes and reflections by Shih-Hsiang Hsiao.", "Writing", "Project logs, learning notes, and reflections on engineering and exchange."],
+    en: ["Writing | HSIAO SHIH HSIANG", "Engineering notes and reflections by HSIAO SHIH HSIANG.", "Writing", "Project logs, learning notes, and reflections on engineering and exchange."],
     ja: ["記事 | 蕭士翔", "蕭士翔のプロジェクト記録、学習ノート、振り返り。", "記事", "プロジェクト、学習、工学、留学についての記録です。"],
   }[locale];
   const list = posts.length
@@ -477,7 +500,7 @@ function renderBlogIndex(posts, locale = "zh", relativeRoot = "..") {
     locale,
     content: `<section class="blog-hero">
         <div class="section-inner">
-          <p class="kicker">Writing</p>
+          <p class="kicker">${copy[2]}</p>
           <h1>${copy[2]}</h1>
           <p>${copy[3]}</p>
         </div>
@@ -512,8 +535,8 @@ function renderProjectsIndex(projects, locale = "zh", relativeRoot = "..") {
   const ui = localeUi[locale];
   const prefix = localePrefixes[locale];
   const copy = {
-    zh: ["Projects & Directions | 蕭士翔", "蕭士翔的專題、交換準備與學習系統紀錄。", "專題與方向", "每個專案都有自己的背景、目標、進度、工具與下一步。"],
-    en: ["Projects & Directions | Shih-Hsiang Hsiao", "Robotics, control, exchange, and learning-system projects by Shih-Hsiang Hsiao.", "Projects & Directions", "Each case study records its context, goals, current evidence, tools, and next step."],
+    zh: ["專題與方向｜蕭士翔", "蕭士翔的專題、交換準備與學習系統紀錄。", "專題與方向", "每個專案都有自己的背景、目標、進度、工具與下一步。"],
+    en: ["Projects & Directions | HSIAO SHIH HSIANG", "Robotics, control, exchange, and learning-system projects by HSIAO SHIH HSIANG.", "Projects & Directions", "Each case study records its context, goals, current evidence, tools, and next step."],
     ja: ["プロジェクト | 蕭士翔", "蕭士翔のロボティクス、制御、留学、学習システムの記録。", "プロジェクト", "各ページに背景、目標、現在の進捗、ツール、次のステップを記録します。"],
   }[locale];
   const list = projects.length
@@ -543,7 +566,7 @@ function renderProjectsIndex(projects, locale = "zh", relativeRoot = "..") {
     locale,
     content: `<section class="blog-hero">
         <div class="section-inner">
-          <p class="kicker">Projects & Directions</p>
+          <p class="kicker">${copy[2]}</p>
           <h1>${copy[2]}</h1>
           <p>${copy[3]}</p>
         </div>
@@ -561,9 +584,10 @@ function renderProject(project, locale = "zh", relativeRoot = "../..") {
   const ui = localeUi[locale];
   const prefix = localePrefixes[locale];
   const stackText = project.stack.length ? project.stack.join(", ") : ui.updating;
+  const factsLabel = { zh: "專案資訊", en: "Project details", ja: "プロジェクト情報" }[locale];
 
   return pageShell({
-    title: `${project.title} | 蕭士翔`,
+    title: `${project.title} | ${ui.displayName}`,
     description: project.excerpt,
     relativeRoot,
     canonicalPath: `${prefix}/projects/${project.slug}/`,
@@ -576,7 +600,7 @@ function renderProject(project, locale = "zh", relativeRoot = "../..") {
             <span class="status-label ${statusClass(project.status)}">${escapeHtml(project.status)}</span>
             <h1>${escapeHtml(project.title)}</h1>
             <p>${escapeHtml(project.excerpt)}</p>
-            <div class="project-facts" aria-label="專案資訊">
+            <div class="project-facts" aria-label="${factsLabel}">
               <div class="project-fact">
                 <strong>${ui.year}</strong>
                 <span>${escapeHtml(project.year || ui.updating)}</span>
@@ -603,9 +627,10 @@ function renderProject(project, locale = "zh", relativeRoot = "../..") {
 }
 
 function renderPost(post, locale = "zh", relativeRoot = "../..") {
+  const ui = localeUi[locale];
   const prefix = localePrefixes[locale];
   return pageShell({
-    title: `${post.title} | 蕭士翔`,
+    title: `${post.title} | ${ui.displayName}`,
     description: post.excerpt,
     relativeRoot,
     canonicalPath: `${prefix}/posts/${post.slug}/`,
@@ -633,7 +658,7 @@ function renderContentPage(page, locale = "zh", relativeRoot = "..") {
   const ui = localeUi[locale];
   const prefix = localePrefixes[locale];
   return pageShell({
-    title: `${page.title} | 蕭士翔`,
+    title: `${page.title} | ${ui.displayName}`,
     description: page.description,
     relativeRoot,
     canonicalPath: `${prefix}/${page.slug}/`,
@@ -659,40 +684,51 @@ function renderContentPage(page, locale = "zh", relativeRoot = "..") {
 
 const localizedHome = {
   en: {
-    title: "Shih-Hsiang Hsiao | Mechanical Engineering, Robotics, and Control",
-    description: "Engineering portfolio of Shih-Hsiang Hsiao, featuring robotics, control, system modeling, AI-assisted learning, and the Nagoya University NUPACE exchange.",
+    heroName: "HSIAO SHIH HSIANG",
+    imageAlt: "A bright workspace overlooking Taipei",
+    title: "HSIAO SHIH HSIANG | Mechanical Engineering, Robotics, and Control",
+    description: "Engineering portfolio of HSIAO SHIH HSIANG, featuring robotics, control, system modeling, AI-assisted learning, and the Nagoya University NUPACE exchange.",
     kicker: "Mechanical Engineering · Robotics · Control",
-    lede: "Mechanical engineering and control student at National Taiwan University of Science and Technology, focusing on control engineering, robotics, system modeling, and AI-assisted learning. Joining Nagoya University’s NUPACE program from September 2026 to February 2027.",
+    lede: "I study engineering at Taiwan Tech. When I encounter an answer, I usually want to know why it works, where it breaks, and whether there is a better way. These questions have led me into control, robotics, and AI, with a NUPACE exchange at Nagoya University beginning in fall 2026.",
     viewProjects: "View Projects", viewResume: "View Resume", contact: "Contact Me",
-    focusTitle: "What I am working on now", updated: "Last updated: 2026-07-11",
+    currentKicker: "Current Focus", loading: "Loading articles…",
+    meta: [["School", "NTUST / Taiwan Tech"], ["Exchange", "Nagoya University NUPACE"], ["Focus", "Control, Robotics, and Modeling"]],
+    focusTitle: "Where my time is going right now", updated: "Last updated: 2026-07-11",
     focus: [["Exchange", "Preparing for Nagoya University NUPACE"], ["Robotics", "Cooperative agricultural robot system"], ["Control", "2-DOF singularity analysis and DLS"], ["Workflow", "Public engineering knowledge base"]],
     nowLink: "View the complete Now page",
-    aboutKicker: "About", aboutTitle: "I connect equations, experiments, and engineering decisions.",
-    about: ["I am Shih-Hsiang Hsiao, an engineering student at Taiwan Tech. My interests center on robotics, control, system design, and practical AI-assisted workflows.", "This site documents both outcomes and process: how I model problems, test alternatives, correct mistakes, and decide what evidence is still missing."],
-    projectsKicker: "Featured Projects", projectsTitle: "Current engineering and academic work", projectsNote: "Each page records the problem, method, current evidence, open questions, and next step.", allProjects: "View all projects",
-    skillsKicker: "Skills with Evidence", skillsTitle: "Skills are connected to work that can be inspected.",
+    aboutKicker: "About", aboutTitle: "I have a habit of following a question further than I planned.",
+    about: ["I am HSIAO SHIH HSIANG, an engineering student at Taiwan Tech. When a system works, I still want to ask why it was designed that way, where its limits are, and what would happen if one decision changed. That habit sometimes makes a problem more complicated, but it is also what pulled me toward control, robotics, AI, and cars.", "The same thing happens outside engineering. I can start an F1 race wondering who will win and end up reading about tire strategy; an idol variety show can turn into questions about group dynamics and selection systems. My interests look scattered, but most of them come back to one question: how do different people and parts become a system?", "This site is my working desk for those questions. I keep finished work here, but also wrong turns, missing evidence, and whatever I need to test next."],
+    interestSnapshot: [["Engineering", "Control, robotics, AI, and mobility"], ["Sports", "Badminton, F1, MLB, and NBA"], ["Culture", "Japanese idols, anime, and language"], ["Music", "Pop, hip-hop, R&B, and soundtracks"]],
+    interestLink: "Explore all interests",
+    projectsKicker: "Featured Projects", projectsTitle: "Some questions are worth chasing until an answer appears.", projectsNote: "These projects are still growing. I separate what has been verified, what remains an assumption, and what I need to try next.", allProjects: "View all projects",
+    skillsKicker: "Skills with Evidence", skillsTitle: "A tool name matters less than the problem I have actually used it to solve.",
     skills: [["MATLAB & Modeling", "2R kinematics, Jacobian metrics, workspace and trajectory visualization."], ["Python, ROS & Systems", "Node architecture, perception and control modules, and multi-robot planning."], ["Control & Robotics", "Forward and inverse kinematics, mathematical modeling, and engineering trade-offs."], ["Development Workflow", "Git, GitHub, Linux, Markdown, static-site publishing, and manual AI verification."]],
     journeyKicker: "Academic & Exchange", journeyTitle: "Coursework, projects, and exchange on one learning path.", journeyLinks: [["Academic Journey", "How engineering mathematics, mechanisms, electronics, and control connect to practice."], ["NUPACE Exchange", "Course planning, preparation, and reflections from the 2026–2027 exchange."], ["Resume", "A concise view of education, projects, technical tools, and languages."]],
-    writingKicker: "Writing", writingTitle: "Notes for clearer engineering thinking.", writingNote: "Robotics, control, exchange, learning, and AI-assisted workflows.", allWriting: "View all writing",
-    contactKicker: "Contact", contactTitle: "Let’s talk about engineering and learning.", contactNote: "Open to conversations about robotics, control engineering, exchange experiences, academic projects, and engineering collaboration.",
+    writingKicker: "Writing", writingTitle: "Sometimes I have to write something down before I notice I do not understand it yet.", writingNote: "Notes on robotics, control, exchange life, AI tools, and the mistakes that made the next attempt better.", allWriting: "View all writing",
+    contactKicker: "Contact", contactTitle: "Working on a question without a standard answer? Let’s talk.", contactNote: "Robotics, control, exchange, music, racing, or simply something you have been thinking about too deeply are all welcome.",
   },
   ja: {
+    heroName: "蕭士翔", imageAlt: "台北の景色を望む明るい作業スペース",
     title: "蕭士翔 | 機械工学・ロボティクス・制御",
     description: "蕭士翔のエンジニアリング・ポートフォリオ。ロボティクス、制御工学、システムモデリング、AI支援学習、名古屋大学NUPACE留学を記録します。",
     kicker: "機械工学 · ロボティクス · 制御",
-    lede: "国立台湾科技大学で機械・制御分野を学び、制御工学、ロボティクス、システムモデリング、AI支援学習に取り組んでいます。2026年9月から2027年2月まで名古屋大学NUPACEに参加予定です。",
+    lede: "台湾科技大学で工学を学んでいます。答えをそのまま受け取るより、なぜ成り立つのか、どこで破綻するのか、別の方法はないのかを考えたくなります。その好奇心から制御、ロボティクス、AIへ進み、2026年秋からは名古屋大学NUPACEに参加する予定です。",
     viewProjects: "プロジェクトを見る", viewResume: "履歴を見る", contact: "連絡する",
-    focusTitle: "現在取り組んでいること", updated: "最終更新: 2026-07-11",
+    currentKicker: "現在の取り組み", loading: "記事を読み込み中…",
+    meta: [["大学", "国立台湾科技大学"], ["留学", "名古屋大学 NUPACE"], ["専門", "制御・ロボティクス・モデリング"]],
+    focusTitle: "最近、時間を使っていること", updated: "最終更新: 2026-07-11",
     focus: [["留学", "名古屋大学NUPACEの渡航準備"], ["ロボティクス", "農業収穫ロボットの協調システム"], ["制御", "2自由度特異点解析とDLS"], ["ワークフロー", "公開エンジニアリング知識ベース"]],
     nowLink: "Nowページを詳しく見る",
-    aboutKicker: "プロフィール", aboutTitle: "数式、実験、設計判断をつなげる。",
-    about: ["蕭士翔です。台湾科技大学で工学を学び、ロボティクス、制御、システム設計、AIを活用した学習プロセスに関心があります。", "このサイトでは成果だけでなく、問題のモデル化、比較検証、修正、そして不足している証拠まで記録します。"],
-    projectsKicker: "主なプロジェクト", projectsTitle: "現在進行中の工学・学術プロジェクト", projectsNote: "各ページに課題、方法、現在の証拠、未解決点、次のステップを記録します。", allProjects: "すべてのプロジェクトを見る",
-    skillsKicker: "根拠のあるスキル", skillsTitle: "スキルを確認できる実作業と結び付ける。",
+    aboutKicker: "プロフィール", aboutTitle: "一つの疑問を、予定より深く追いかけてしまいます。",
+    about: ["蕭士翔です。システムが動くと分かっても、なぜその設計なのか、限界はどこか、方法を変えたらどうなるのかが気になります。考えすぎて問題を複雑にすることもありますが、その癖が制御、ロボティクス、AI、自動車へ私を連れてきました。", "工学の外でも同じです。F1の勝敗からタイヤ戦略を調べ始め、アイドル番組からメンバーの関係や選抜制度まで気になります。ばらばらに見える興味も、結局は『異なる人や部品が、どう一つのシステムになるのか』という問いにつながっています。", "このサイトは、そうした疑問のための作業机です。完成した成果だけでなく、間違えた道、足りない証拠、次に試すことも残します。"],
+    interestSnapshot: [["工学", "制御、ロボティクス、AI、モビリティ"], ["スポーツ", "バドミントン、F1、MLB、NBA"], ["文化", "日本のアイドル、アニメ、日本語"], ["音楽", "ポップ、ヒップホップ、R&B、サウンドトラック"]],
+    interestLink: "興味をすべて見る",
+    projectsKicker: "主なプロジェクト", projectsTitle: "自分の手で、答えが見えるところまで追いたい問い。", projectsNote: "どのプロジェクトもまだ成長途中です。検証できたこと、仮説のままのこと、次に試すことを分けて記録します。", allProjects: "すべてのプロジェクトを見る",
+    skillsKicker: "根拠のあるスキル", skillsTitle: "ツール名より、それを使って実際に何を解いたかを大切にします。",
     skills: [["MATLAB・モデリング", "2R運動学、Jacobian指標、作業空間と軌道の可視化。"], ["Python・ROS・システム", "ノード構成、知覚・制御モジュール、複数ロボット計画。"], ["制御・ロボティクス", "順運動学・逆運動学、数理モデル、工学的トレードオフ。"], ["開発ワークフロー", "Git、GitHub、Linux、Markdown、静的サイト公開、AI出力の手動検証。"]],
-    journeyKicker: "学業・留学", journeyTitle: "授業、プロジェクト、留学を一つの学習経路に。", journeyLinks: [["Academic Journey", "工学数学、機構、電子、制御を実践につなげる過程。"], ["NUPACE留学", "2026–2027年の履修計画、渡航準備、振り返り。"], ["履歴", "学歴、プロジェクト、技術ツール、語学力の要約。"]],
-    writingKicker: "記事", writingTitle: "工学的思考を明確にするためのノート。", writingNote: "ロボティクス、制御、留学、学習、AI支援ワークフロー。", allWriting: "すべての記事を見る",
-    contactKicker: "連絡先", contactTitle: "工学と学びについて話しましょう。", contactNote: "ロボティクス、制御工学、留学経験、学術プロジェクト、共同開発についての交流を歓迎します。",
+    journeyKicker: "学業・留学", journeyTitle: "授業、プロジェクト、留学を一つの学習経路に。", journeyLinks: [["学習の歩み", "工学数学、機構、電子、制御を実践につなげる過程。"], ["NUPACE留学", "2026–2027年の履修計画、渡航準備、振り返り。"], ["履歴", "学歴、プロジェクト、技術ツール、語学力の要約。"]],
+    writingKicker: "記事", writingTitle: "書いてみて初めて、まだ理解していなかったと気づくことがあります。", writingNote: "ロボティクス、制御、留学生活、AIツール、そして次の試行を良くした失敗について。", allWriting: "すべての記事を見る",
+    contactKicker: "連絡先", contactTitle: "正解の決まっていない問いを考えているなら、話してみませんか。", contactNote: "ロボティクス、制御、留学、音楽、レース、あるいは最近考えすぎていることでも歓迎します。",
   },
 };
 
@@ -707,16 +743,17 @@ function renderLocalizedHome(locale, projects) {
   const skills = copy.skills.map(([title, text]) => `<div class="skill-group"><h3>${title}</h3><p>${text}</p></div>`).join("");
   const journeyRoutes = ["academic-journey", "projects/nupace-exchange-prep", "resume"];
   const journey = copy.journeyLinks.map(([title, text], index) => `<a href="./${journeyRoutes[index]}/"><strong>${title}</strong><span>${text}</span></a>`).join("");
+  const interestSnapshot = copy.interestSnapshot.map(([title, text]) => `<div><strong>${title}</strong><span>${text}</span></div>`).join("");
 
   return pageShell({
     title: copy.title, description: copy.description, relativeRoot: "..", canonicalPath: `${prefix}/`, route: "/", locale,
-    content: `<section class="hero" id="top" aria-labelledby="hero-title"><img class="hero-image" src="../assets/hero-workspace.png" alt="Workspace overlooking Taipei" /><div class="hero-overlay" aria-hidden="true"></div><div class="hero-content reveal"><p class="kicker">${copy.kicker}</p><h1 id="hero-title">蕭士翔<br />Shih-Hsiang Hsiao</h1><p class="hero-lede">${copy.lede}</p><div class="hero-actions"><a class="button button-primary" href="#work">${copy.viewProjects}</a><a class="button button-ghost" href="./resume/">${copy.viewResume}</a><a class="button button-ghost" href="#contact">${copy.contact}</a></div><dl class="hero-meta"><div><dt>School</dt><dd>NTUST / Taiwan Tech</dd></div><div><dt>Exchange</dt><dd>Nagoya NUPACE</dd></div><div><dt>Focus</dt><dd>Control, Robotics, Modeling</dd></div></dl></div></section>
-      <section class="current-focus"><div class="section-inner reveal"><div class="focus-heading"><div><p class="kicker">Current Focus</p><h2>${copy.focusTitle}</h2></div><p class="updated-date">${copy.updated}</p></div><div class="focus-grid">${focus}</div><a class="text-link" href="./now/">${copy.nowLink}</a></div></section>
-      <section class="section" id="about"><div class="section-inner split-layout"><div class="section-heading reveal"><p class="kicker">${copy.aboutKicker}</p><h2>${copy.aboutTitle}</h2></div><div class="body-copy reveal">${copy.about.map((text) => `<p>${text}</p>`).join("")}</div></div></section>
+    content: `<section class="hero" id="top" aria-labelledby="hero-title"><img class="hero-image" src="../assets/hero-workspace.png" alt="${copy.imageAlt}" /><div class="hero-overlay" aria-hidden="true"></div><div class="hero-content reveal"><p class="kicker">${copy.kicker}</p><h1 id="hero-title">${copy.heroName}</h1><p class="hero-lede">${copy.lede}</p><div class="hero-actions"><a class="button button-primary" href="#work">${copy.viewProjects}</a><a class="button button-ghost" href="./resume/">${copy.viewResume}</a><a class="button button-ghost" href="#contact">${copy.contact}</a></div><dl class="hero-meta">${copy.meta.map(([term, detail]) => `<div><dt>${term}</dt><dd>${detail}</dd></div>`).join("")}</dl></div></section>
+      <section class="current-focus"><div class="section-inner reveal"><div class="focus-heading"><div><p class="kicker">${copy.currentKicker}</p><h2>${copy.focusTitle}</h2></div><p class="updated-date">${copy.updated}</p></div><div class="focus-grid">${focus}</div><a class="text-link" href="./now/">${copy.nowLink}</a></div></section>
+      <section class="section" id="about"><div class="section-inner split-layout"><div class="section-heading reveal"><p class="kicker">${copy.aboutKicker}</p><h2>${copy.aboutTitle}</h2></div><div class="body-copy reveal">${copy.about.map((text) => `<p>${text}</p>`).join("")}<div class="interest-preview">${interestSnapshot}</div><a class="interest-link" href="./interests/">${copy.interestLink}</a></div></div></section>
       <section class="section section-muted" id="work"><div class="section-inner"><div class="section-heading narrow reveal"><p class="kicker">${copy.projectsKicker}</p><h2>${copy.projectsTitle}</h2><p class="section-note">${copy.projectsNote}</p></div><div class="project-grid project-grid-featured">${projectCards}</div><a class="text-link dark-link" href="./projects/">${copy.allProjects}</a></div></section>
       <section class="section"><div class="section-inner split-layout"><div class="section-heading reveal"><p class="kicker">${copy.skillsKicker}</p><h2>${copy.skillsTitle}</h2></div><div class="skills-panel reveal">${skills}</div></div></section>
       <section class="section journey-preview"><div class="section-inner split-layout"><div class="section-heading reveal"><p class="kicker">${copy.journeyKicker}</p><h2>${copy.journeyTitle}</h2></div><div class="preview-links reveal">${journey}</div></div></section>
-      <section class="section section-muted"><div class="section-inner"><div class="section-heading narrow reveal"><p class="kicker">${copy.writingKicker}</p><h2>${copy.writingTitle}</h2><p class="section-note">${copy.writingNote}</p></div><div class="post-preview-grid" data-latest-posts><p class="post-loading">Loading…</p></div><a class="text-link dark-link" href="./blog/">${copy.allWriting}</a></div></section>
+      <section class="section section-muted"><div class="section-inner"><div class="section-heading narrow reveal"><p class="kicker">${copy.writingKicker}</p><h2>${copy.writingTitle}</h2><p class="section-note">${copy.writingNote}</p></div><div class="post-preview-grid" data-latest-posts><p class="post-loading">${copy.loading}</p></div><a class="text-link dark-link" href="./blog/">${copy.allWriting}</a></div></section>
       <section class="contact-section" id="contact"><div class="section-inner contact-layout reveal"><div><p class="kicker">${copy.contactKicker}</p><h2>${copy.contactTitle}</h2><p class="contact-note">${copy.contactNote}</p></div><div class="contact-actions"><a class="button button-primary" href="mailto:samhsiao0926@gmail.com">Email</a><a class="button button-secondary" href="https://github.com/Samuelsheshine" target="_blank" rel="noreferrer">GitHub</a><a class="button button-secondary" href="https://www.linkedin.com/in/shih-hsiang-hsiao-652182324/" target="_blank" rel="noreferrer">LinkedIn</a></div></div></section>`,
   });
 }
@@ -846,6 +883,7 @@ function build() {
     description: "你要找的頁面不存在或已經移動。",
     relativeRoot: siteUrl,
     canonicalPath: "/404.html",
+    showLanguage: false,
     content: `<section class="not-found"><div class="section-inner"><p class="kicker">404</p><h1>這一頁找不到。</h1><p>網址可能已經變更，請回到首頁或查看專題列表。</p><div class="hero-actions"><a class="button button-primary" href="./">回首頁</a><a class="button button-secondary" href="./projects/">查看專題</a></div></div></section>`,
   }));
 
