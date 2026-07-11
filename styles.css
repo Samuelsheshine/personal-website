@@ -413,10 +413,18 @@ h3 {
 }
 
 .project-card-link {
+  position: relative;
+  z-index: 1;
+  cursor: pointer;
+  touch-action: manipulation;
   transition:
     transform 160ms ease,
     box-shadow 160ms ease,
     border-color 160ms ease;
+}
+
+.project-card-link > * {
+  pointer-events: none;
 }
 
 .project-card-link:hover,
