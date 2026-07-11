@@ -14,6 +14,8 @@
 - `content/posts/`：新增或修改貼文。
 - `content/projects/`：新增或修改專案頁。
 - `content/pages/`：修改 Now、Academic Journey 與 Resume 等固定內容頁。
+- `content/en/`：英文版的 pages、projects 與 posts。
+- `content/ja/`：日文版的 pages、projects 與 posts。
 - `scripts/build-posts.js`：把 Markdown 貼文與專案轉成網站頁面。
 - `.github/workflows/pages.yml`：推到 GitHub 後自動部署到 GitHub Pages。
 
@@ -94,6 +96,14 @@ description: 這個頁面的搜尋摘要。
 ```
 
 建置時也會自動產生 `sitemap.xml`、`robots.txt`、`404.html`、貼文與專案 JSON manifest。
+
+## 三語內容
+
+- 中文使用網站根路徑，例如 `/projects/`。
+- 英文使用 `/en/`，例如 `/en/projects/`。
+- 日文使用 `/ja/`，例如 `/ja/projects/`。
+
+三種語言使用相同的 `slug`，語言切換才能留在同一頁。例如三個版本的 2-DOF 專題都必須使用 `slug: 2-dof-robot-arm`。新增中文專題後，如果翻譯尚未完成，不要先建立空白語言頁；完成翻譯後再將對應 Markdown 加入 `content/en/projects/` 與 `content/ja/projects/`。
 
 ## 發布到 GitHub Pages
 

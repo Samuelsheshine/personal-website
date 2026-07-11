@@ -5,6 +5,27 @@ const toast = document.querySelector(".toast");
 const copyEmailButton = document.querySelector("[data-copy-email]");
 const year = document.querySelector("#year");
 const latestPosts = document.querySelector("[data-latest-posts]");
+const languageLinks = document.querySelectorAll("[data-language]");
+
+languageLinks.forEach((link) => {
+  link.addEventListener("click", () => {
+    window.localStorage.setItem("preferred-language", link.dataset.language);
+  });
+});
+
+try {
+  const preferredLanguage = window.localStorage.getItem("preferred-language");
+  const currentLanguage = document.documentElement.lang === "zh-Hant"
+    ? "zh"
+    : document.documentElement.lang;
+
+  if (preferredLanguage && preferredLanguage !== currentLanguage) {
+    const preferredLink = document.querySelector(`[data-language="${preferredLanguage}"]`);
+    if (preferredLink) window.location.replace(preferredLink.href);
+  }
+} catch {
+  // Language switching still works when storage is unavailable.
+}
 
 if (year) {
   year.textContent = new Date().getFullYear();

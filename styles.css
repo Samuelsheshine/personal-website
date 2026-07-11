@@ -132,6 +132,29 @@ select {
   color: var(--ink);
 }
 
+.language-switcher {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  margin-left: 0.35rem;
+  border-left: 1px solid var(--line);
+  padding-left: 0.65rem;
+}
+
+.nav-menu .language-switcher a {
+  min-width: 34px;
+  display: grid;
+  place-items: center;
+  padding: 0.45rem 0.35rem;
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+
+.nav-menu .language-switcher a.is-active {
+  background: var(--graphite);
+  color: #fff;
+}
+
 .nav-toggle {
   width: 44px;
   height: 44px;
@@ -1077,6 +1100,13 @@ h3 {
     transition:
       opacity 180ms ease,
       transform 180ms ease;
+  }
+
+  .language-switcher {
+    margin: 0.25rem 0 0;
+    border-top: 1px solid var(--line);
+    border-left: 0;
+    padding: 0.55rem 0 0;
   }
 
   body.nav-open .nav-menu {

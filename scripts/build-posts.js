@@ -12,6 +12,30 @@ const postsOutputDir = path.join(distDir, "posts");
 const blogOutputDir = path.join(distDir, "blog");
 const projectsOutputDir = path.join(distDir, "projects");
 const staticEntries = ["index.html", "styles.css", "script.js", "favicon.svg", ".nojekyll", "assets"];
+const localePrefixes = { zh: "", en: "/en", ja: "/ja" };
+const localeUi = {
+  zh: {
+    htmlLang: "zh-Hant", skip: "跳到主要內容", home: "首頁", about: "關於", now: "Now",
+    projects: "專題", journey: "學習歷程", writing: "Writing", resume: "履歷", contact: "聯絡",
+    menuOpen: "開啟選單", brand: "蕭士翔首頁", backHome: "回首頁", read: "閱讀文章",
+    noPosts: "目前還沒有貼文。", noProjects: "目前還沒有專案。", year: "年份", role: "角色",
+    tools: "工具 / 主題", updating: "持續更新", techLabel: "使用技術", lastUpdated: "Last updated",
+  },
+  en: {
+    htmlLang: "en", skip: "Skip to main content", home: "Home", about: "About", now: "Now",
+    projects: "Projects", journey: "Academic Journey", writing: "Writing", resume: "Resume", contact: "Contact",
+    menuOpen: "Open menu", brand: "Shih-Hsiang Hsiao home", backHome: "Back to home", read: "Read article",
+    noPosts: "No articles yet.", noProjects: "No projects yet.", year: "Year", role: "Role",
+    tools: "Tools / Topics", updating: "Continuously updated", techLabel: "Technologies", lastUpdated: "Last updated",
+  },
+  ja: {
+    htmlLang: "ja", skip: "メインコンテンツへ", home: "ホーム", about: "プロフィール", now: "Now",
+    projects: "プロジェクト", journey: "学習の歩み", writing: "記事", resume: "履歴", contact: "連絡先",
+    menuOpen: "メニューを開く", brand: "蕭士翔ホーム", backHome: "ホームへ戻る", read: "記事を読む",
+    noPosts: "記事はまだありません。", noProjects: "プロジェクトはまだありません。", year: "年度", role: "役割",
+    tools: "ツール / テーマ", updating: "継続更新", techLabel: "使用技術", lastUpdated: "最終更新",
+  },
+};
 
 function ensureDir(dir) {
   fs.mkdirSync(dir, { recursive: true });
@@ -233,21 +257,22 @@ function stripMarkdown(markdown) {
     .trim();
 }
 
-function formatDate(date) {
-  return new Intl.DateTimeFormat("zh-TW", {
+function formatDate(date, locale = "zh") {
+  const dateLocale = { zh: "zh-TW", en: "en-US", ja: "ja-JP" }[locale];
+  return new Intl.DateTimeFormat(dateLocale, {
     dateStyle: "medium",
     timeZone: "Asia/Taipei",
   }).format(date);
 }
 
-function readPosts() {
-  if (!fs.existsSync(postsContentDir)) return [];
+function readPosts(contentDir = postsContentDir, locale = "zh") {
+  if (!fs.existsSync(contentDir)) return [];
 
   return fs
-    .readdirSync(postsContentDir)
+    .readdirSync(contentDir)
     .filter((file) => file.endsWith(".md"))
     .map((file) => {
-      const fullPath = path.join(postsContentDir, file);
+      const fullPath = path.join(contentDir, file);
       const source = fs.readFileSync(fullPath, "utf8");
       const { data, body } = parseFrontMatter(source);
       const title = data.title || file.replace(/\.md$/, "");
@@ -266,7 +291,7 @@ function readPosts() {
         date,
         dateText,
         updatedText,
-        displayDate: formatDate(date),
+        displayDate: formatDate(date, locale),
         slug,
         excerpt,
         body,
@@ -282,14 +307,14 @@ function readPosts() {
     .sort((a, b) => b.date - a.date);
 }
 
-function readPages() {
-  if (!fs.existsSync(pagesContentDir)) return [];
+function readPages(contentDir = pagesContentDir) {
+  if (!fs.existsSync(contentDir)) return [];
 
   return fs
-    .readdirSync(pagesContentDir)
+    .readdirSync(contentDir)
     .filter((file) => file.endsWith(".md"))
     .map((file) => {
-      const source = fs.readFileSync(path.join(pagesContentDir, file), "utf8");
+      const source = fs.readFileSync(path.join(contentDir, file), "utf8");
       const { data, body } = parseFrontMatter(source);
       const slug = slugify(data.slug || file.replace(/\.md$/, ""));
 
@@ -304,14 +329,14 @@ function readPages() {
     });
 }
 
-function readProjects() {
-  if (!fs.existsSync(projectsContentDir)) return [];
+function readProjects(contentDir = projectsContentDir) {
+  if (!fs.existsSync(contentDir)) return [];
 
   return fs
-    .readdirSync(projectsContentDir)
+    .readdirSync(contentDir)
     .filter((file) => file.endsWith(".md"))
     .map((file) => {
-      const fullPath = path.join(projectsContentDir, file);
+      const fullPath = path.join(contentDir, file);
       const source = fs.readFileSync(fullPath, "utf8");
       const { data, body } = parseFrontMatter(source);
       const title = data.title || file.replace(/\.md$/, "");
@@ -343,16 +368,30 @@ function readProjects() {
     .sort((a, b) => a.order - b.order || a.title.localeCompare(b.title, "zh-Hant"));
 }
 
-function pageShell({ title, description, content, relativeRoot = ".", canonicalPath = "/" }) {
+function languageLinks(relativeRoot, route, locale) {
+  return `<div class="language-switcher" aria-label="Language">
+            ${[["zh", "中"], ["en", "EN"], ["ja", "日"]].map(([code, label]) => `<a href="${relativeRoot}${localePrefixes[code]}${route}" lang="${localeUi[code].htmlLang}" data-language="${code}"${code === locale ? ' class="is-active" aria-current="page"' : ""}>${label}</a>`).join("")}
+          </div>`;
+}
+
+function alternateLinks(route) {
+  return [["zh-Hant", "zh"], ["en", "en"], ["ja", "ja"]]
+    .map(([hreflang, locale]) => `<link rel="alternate" hreflang="${hreflang}" href="${siteUrl}${localePrefixes[locale]}${route}" />`)
+    .join("\n    ");
+}
+
+function pageShell({ title, description, content, relativeRoot = ".", canonicalPath = "/", locale = "zh", route = canonicalPath }) {
+  const ui = localeUi[locale];
   const canonicalUrl = `${siteUrl}${canonicalPath}`;
   return `<!doctype html>
-<html lang="zh-Hant">
+<html lang="${ui.htmlLang}">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>${escapeHtml(title)}</title>
     <meta name="description" content="${escapeHtml(description)}" />
     <link rel="canonical" href="${escapeHtml(canonicalUrl)}" />
+    ${alternateLinks(route)}
     <meta property="og:type" content="website" />
     <meta property="og:title" content="${escapeHtml(title)}" />
     <meta property="og:description" content="${escapeHtml(description)}" />
@@ -363,28 +402,29 @@ function pageShell({ title, description, content, relativeRoot = ".", canonicalP
     <link rel="stylesheet" href="${relativeRoot}/styles.css" />
   </head>
   <body>
-    <a class="skip-link" href="#main">跳到主要內容</a>
+    <a class="skip-link" href="#main">${ui.skip}</a>
 
     <header class="site-header">
-      <nav class="nav" aria-label="主要導覽">
-        <a class="brand" href="${relativeRoot}/" aria-label="蕭士翔首頁">
+      <nav class="nav" aria-label="Navigation">
+        <a class="brand" href="${relativeRoot}${localePrefixes[locale]}/" aria-label="${ui.brand}">
           <span class="brand-mark">SH</span>
           <span>蕭士翔</span>
         </a>
 
-        <button class="nav-toggle" type="button" aria-expanded="false" aria-controls="nav-menu" aria-label="開啟選單">
+        <button class="nav-toggle" type="button" aria-expanded="false" aria-controls="nav-menu" aria-label="${ui.menuOpen}">
           <span></span><span></span><span></span>
         </button>
 
         <div class="nav-menu" id="nav-menu">
-          <a href="${relativeRoot}/">首頁</a>
-          <a href="${relativeRoot}/#about">關於</a>
-          <a href="${relativeRoot}/now/">Now</a>
-          <a href="${relativeRoot}/projects/">專題</a>
-          <a href="${relativeRoot}/academic-journey/">學習歷程</a>
-          <a href="${relativeRoot}/blog/">Writing</a>
-          <a href="${relativeRoot}/resume/">履歷</a>
-          <a href="${relativeRoot}/#contact">聯絡</a>
+          <a href="${relativeRoot}${localePrefixes[locale]}/">${ui.home}</a>
+          <a href="${relativeRoot}${localePrefixes[locale]}/#about">${ui.about}</a>
+          <a href="${relativeRoot}${localePrefixes[locale]}/now/">${ui.now}</a>
+          <a href="${relativeRoot}${localePrefixes[locale]}/projects/">${ui.projects}</a>
+          <a href="${relativeRoot}${localePrefixes[locale]}/academic-journey/">${ui.journey}</a>
+          <a href="${relativeRoot}${localePrefixes[locale]}/blog/">${ui.writing}</a>
+          <a href="${relativeRoot}${localePrefixes[locale]}/resume/">${ui.resume}</a>
+          <a href="${relativeRoot}${localePrefixes[locale]}/#contact">${ui.contact}</a>
+          ${languageLinks(relativeRoot, route, locale)}
         </div>
       </nav>
     </header>
@@ -396,7 +436,7 @@ function pageShell({ title, description, content, relativeRoot = ".", canonicalP
     <footer class="site-footer">
       <div class="section-inner footer-inner">
         <p>© <span id="year"></span> 蕭士翔</p>
-        <a href="${relativeRoot}/">回首頁</a>
+        <a href="${relativeRoot}${localePrefixes[locale]}/">${ui.backHome}</a>
       </div>
     </footer>
 
@@ -405,7 +445,14 @@ function pageShell({ title, description, content, relativeRoot = ".", canonicalP
 </html>`;
 }
 
-function renderBlogIndex(posts) {
+function renderBlogIndex(posts, locale = "zh", relativeRoot = "..") {
+  const ui = localeUi[locale];
+  const prefix = localePrefixes[locale];
+  const copy = {
+    zh: ["貼文 | 蕭士翔", "蕭士翔的最新貼文與學習紀錄。", "貼文", "我會把作品紀錄、學習筆記與想法整理在這裡。"],
+    en: ["Writing | Shih-Hsiang Hsiao", "Engineering notes and reflections by Shih-Hsiang Hsiao.", "Writing", "Project logs, learning notes, and reflections on engineering and exchange."],
+    ja: ["記事 | 蕭士翔", "蕭士翔のプロジェクト記録、学習ノート、振り返り。", "記事", "プロジェクト、学習、工学、留学についての記録です。"],
+  }[locale];
   const list = posts.length
     ? posts
         .map(
@@ -415,22 +462,24 @@ function renderBlogIndex(posts) {
               <h3>${escapeHtml(post.title)}</h3>
               <p>${escapeHtml(post.excerpt)}</p>
             </div>
-            <a href="../posts/${post.slug}/">閱讀文章</a>
+            <a href="../posts/${post.slug}/">${ui.read}</a>
           </article>`,
         )
         .join("\n")
-    : '<p class="post-loading">目前還沒有貼文。</p>';
+    : `<p class="post-loading">${ui.noPosts}</p>`;
 
   return pageShell({
-    title: "貼文 | 蕭士翔",
-    description: "蕭士翔的最新貼文與學習紀錄。",
-    relativeRoot: "..",
-    canonicalPath: "/blog/",
+    title: copy[0],
+    description: copy[1],
+    relativeRoot,
+    canonicalPath: `${prefix}/blog/`,
+    route: "/blog/",
+    locale,
     content: `<section class="blog-hero">
         <div class="section-inner">
           <p class="kicker">Writing</p>
-          <h1>貼文</h1>
-          <p>我會把作品紀錄、學習筆記與想法整理在這裡。</p>
+          <h1>${copy[2]}</h1>
+          <p>${copy[3]}</p>
         </div>
       </section>
 
@@ -450,15 +499,23 @@ function statusClass(status) {
   return `status-${slugify(status)}`;
 }
 
-function renderProjectMeta(project) {
+function renderProjectMeta(project, locale = "zh") {
+  const ui = localeUi[locale];
   const stack = project.stack.length
-    ? `<div class="tag-list" aria-label="使用技術">${project.stack.map((item) => `<span>${escapeHtml(item)}</span>`).join("")}</div>`
+    ? `<div class="tag-list" aria-label="${ui.techLabel}">${project.stack.map((item) => `<span>${escapeHtml(item)}</span>`).join("")}</div>`
     : "";
 
   return `<div class="card-meta"><span class="status-label ${statusClass(project.status)}">${escapeHtml(project.status)}</span>${stack}</div>`;
 }
 
-function renderProjectsIndex(projects) {
+function renderProjectsIndex(projects, locale = "zh", relativeRoot = "..") {
+  const ui = localeUi[locale];
+  const prefix = localePrefixes[locale];
+  const copy = {
+    zh: ["Projects & Directions | 蕭士翔", "蕭士翔的專題、交換準備與學習系統紀錄。", "專題與方向", "每個專案都有自己的背景、目標、進度、工具與下一步。"],
+    en: ["Projects & Directions | Shih-Hsiang Hsiao", "Robotics, control, exchange, and learning-system projects by Shih-Hsiang Hsiao.", "Projects & Directions", "Each case study records its context, goals, current evidence, tools, and next step."],
+    ja: ["プロジェクト | 蕭士翔", "蕭士翔のロボティクス、制御、留学、学習システムの記録。", "プロジェクト", "各ページに背景、目標、現在の進捗、ツール、次のステップを記録します。"],
+  }[locale];
   const list = projects.length
     ? projects
         .map(
@@ -470,23 +527,25 @@ function renderProjectsIndex(projects) {
               <p class="project-type">${escapeHtml(project.category)}</p>
               <h3>${escapeHtml(project.title)}</h3>
               <p>${escapeHtml(project.excerpt)}</p>
-              ${renderProjectMeta(project)}
+              ${renderProjectMeta(project, locale)}
             </div>
           </a>`,
         )
         .join("\n")
-    : '<p class="post-loading">目前還沒有專案。</p>';
+    : `<p class="post-loading">${ui.noProjects}</p>`;
 
   return pageShell({
-    title: "Projects & Directions | 蕭士翔",
-    description: "蕭士翔的專題、交換準備與學習系統紀錄。",
-    relativeRoot: "..",
-    canonicalPath: "/projects/",
+    title: copy[0],
+    description: copy[1],
+    relativeRoot,
+    canonicalPath: `${prefix}/projects/`,
+    route: "/projects/",
+    locale,
     content: `<section class="blog-hero">
         <div class="section-inner">
           <p class="kicker">Projects & Directions</p>
-          <h1>專題與方向</h1>
-          <p>這裡整理和貼文不同的 project pages：每個專案都有自己的背景、目標、進度、工具與下一步。</p>
+          <h1>${copy[2]}</h1>
+          <p>${copy[3]}</p>
         </div>
       </section>
 
@@ -498,14 +557,18 @@ function renderProjectsIndex(projects) {
   });
 }
 
-function renderProject(project) {
-  const stackText = project.stack.length ? project.stack.join(", ") : "持續整理中";
+function renderProject(project, locale = "zh", relativeRoot = "../..") {
+  const ui = localeUi[locale];
+  const prefix = localePrefixes[locale];
+  const stackText = project.stack.length ? project.stack.join(", ") : ui.updating;
 
   return pageShell({
     title: `${project.title} | 蕭士翔`,
     description: project.excerpt,
-    relativeRoot: "../..",
-    canonicalPath: `/projects/${project.slug}/`,
+    relativeRoot,
+    canonicalPath: `${prefix}/projects/${project.slug}/`,
+    route: `/projects/${project.slug}/`,
+    locale,
     content: `<article>
         <header class="article-header">
           <div class="section-inner">
@@ -515,15 +578,15 @@ function renderProject(project) {
             <p>${escapeHtml(project.excerpt)}</p>
             <div class="project-facts" aria-label="專案資訊">
               <div class="project-fact">
-                <strong>年份</strong>
-                <span>${escapeHtml(project.year || "持續更新")}</span>
+                <strong>${ui.year}</strong>
+                <span>${escapeHtml(project.year || ui.updating)}</span>
               </div>
               <div class="project-fact">
-                <strong>角色</strong>
+                <strong>${ui.role}</strong>
                 <span>${escapeHtml(project.role || "Owner")}</span>
               </div>
               <div class="project-fact">
-                <strong>工具 / 主題</strong>
+                <strong>${ui.tools}</strong>
                 <span>${escapeHtml(stackText)}</span>
               </div>
             </div>
@@ -539,12 +602,15 @@ function renderProject(project) {
   });
 }
 
-function renderPost(post) {
+function renderPost(post, locale = "zh", relativeRoot = "../..") {
+  const prefix = localePrefixes[locale];
   return pageShell({
     title: `${post.title} | 蕭士翔`,
     description: post.excerpt,
-    relativeRoot: "../..",
-    canonicalPath: `/posts/${post.slug}/`,
+    relativeRoot,
+    canonicalPath: `${prefix}/posts/${post.slug}/`,
+    route: `/posts/${post.slug}/`,
+    locale,
     content: `<article>
         <header class="article-header">
           <div class="section-inner">
@@ -563,19 +629,23 @@ function renderPost(post) {
   });
 }
 
-function renderContentPage(page) {
+function renderContentPage(page, locale = "zh", relativeRoot = "..") {
+  const ui = localeUi[locale];
+  const prefix = localePrefixes[locale];
   return pageShell({
     title: `${page.title} | 蕭士翔`,
     description: page.description,
-    relativeRoot: "..",
-    canonicalPath: `/${page.slug}/`,
+    relativeRoot,
+    canonicalPath: `${prefix}/${page.slug}/`,
+    route: `/${page.slug}/`,
+    locale,
     content: `<article>
         <header class="article-header">
           <div class="section-inner">
             <p class="kicker">${escapeHtml(page.kicker)}</p>
             <h1>${escapeHtml(page.title)}</h1>
             <p>${escapeHtml(page.description)}</p>
-            ${page.updated ? `<p class="updated-date">Last updated: ${escapeHtml(page.updated)}</p>` : ""}
+            ${page.updated ? `<p class="updated-date">${ui.lastUpdated}: ${escapeHtml(page.updated)}</p>` : ""}
           </div>
         </header>
         <div class="article-body">
@@ -585,6 +655,119 @@ function renderContentPage(page) {
         </div>
       </article>`,
   });
+}
+
+const localizedHome = {
+  en: {
+    title: "Shih-Hsiang Hsiao | Mechanical Engineering, Robotics, and Control",
+    description: "Engineering portfolio of Shih-Hsiang Hsiao, featuring robotics, control, system modeling, AI-assisted learning, and the Nagoya University NUPACE exchange.",
+    kicker: "Mechanical Engineering · Robotics · Control",
+    lede: "Mechanical engineering and control student at National Taiwan University of Science and Technology, focusing on control engineering, robotics, system modeling, and AI-assisted learning. Joining Nagoya University’s NUPACE program from September 2026 to February 2027.",
+    viewProjects: "View Projects", viewResume: "View Resume", contact: "Contact Me",
+    focusTitle: "What I am working on now", updated: "Last updated: 2026-07-11",
+    focus: [["Exchange", "Preparing for Nagoya University NUPACE"], ["Robotics", "Cooperative agricultural robot system"], ["Control", "2-DOF singularity analysis and DLS"], ["Workflow", "Public engineering knowledge base"]],
+    nowLink: "View the complete Now page",
+    aboutKicker: "About", aboutTitle: "I connect equations, experiments, and engineering decisions.",
+    about: ["I am Shih-Hsiang Hsiao, an engineering student at Taiwan Tech. My interests center on robotics, control, system design, and practical AI-assisted workflows.", "This site documents both outcomes and process: how I model problems, test alternatives, correct mistakes, and decide what evidence is still missing."],
+    projectsKicker: "Featured Projects", projectsTitle: "Current engineering and academic work", projectsNote: "Each page records the problem, method, current evidence, open questions, and next step.", allProjects: "View all projects",
+    skillsKicker: "Skills with Evidence", skillsTitle: "Skills are connected to work that can be inspected.",
+    skills: [["MATLAB & Modeling", "2R kinematics, Jacobian metrics, workspace and trajectory visualization."], ["Python, ROS & Systems", "Node architecture, perception and control modules, and multi-robot planning."], ["Control & Robotics", "Forward and inverse kinematics, mathematical modeling, and engineering trade-offs."], ["Development Workflow", "Git, GitHub, Linux, Markdown, static-site publishing, and manual AI verification."]],
+    journeyKicker: "Academic & Exchange", journeyTitle: "Coursework, projects, and exchange on one learning path.", journeyLinks: [["Academic Journey", "How engineering mathematics, mechanisms, electronics, and control connect to practice."], ["NUPACE Exchange", "Course planning, preparation, and reflections from the 2026–2027 exchange."], ["Resume", "A concise view of education, projects, technical tools, and languages."]],
+    writingKicker: "Writing", writingTitle: "Notes for clearer engineering thinking.", writingNote: "Robotics, control, exchange, learning, and AI-assisted workflows.", allWriting: "View all writing",
+    contactKicker: "Contact", contactTitle: "Let’s talk about engineering and learning.", contactNote: "Open to conversations about robotics, control engineering, exchange experiences, academic projects, and engineering collaboration.",
+  },
+  ja: {
+    title: "蕭士翔 | 機械工学・ロボティクス・制御",
+    description: "蕭士翔のエンジニアリング・ポートフォリオ。ロボティクス、制御工学、システムモデリング、AI支援学習、名古屋大学NUPACE留学を記録します。",
+    kicker: "機械工学 · ロボティクス · 制御",
+    lede: "国立台湾科技大学で機械・制御分野を学び、制御工学、ロボティクス、システムモデリング、AI支援学習に取り組んでいます。2026年9月から2027年2月まで名古屋大学NUPACEに参加予定です。",
+    viewProjects: "プロジェクトを見る", viewResume: "履歴を見る", contact: "連絡する",
+    focusTitle: "現在取り組んでいること", updated: "最終更新: 2026-07-11",
+    focus: [["留学", "名古屋大学NUPACEの渡航準備"], ["ロボティクス", "農業収穫ロボットの協調システム"], ["制御", "2自由度特異点解析とDLS"], ["ワークフロー", "公開エンジニアリング知識ベース"]],
+    nowLink: "Nowページを詳しく見る",
+    aboutKicker: "プロフィール", aboutTitle: "数式、実験、設計判断をつなげる。",
+    about: ["蕭士翔です。台湾科技大学で工学を学び、ロボティクス、制御、システム設計、AIを活用した学習プロセスに関心があります。", "このサイトでは成果だけでなく、問題のモデル化、比較検証、修正、そして不足している証拠まで記録します。"],
+    projectsKicker: "主なプロジェクト", projectsTitle: "現在進行中の工学・学術プロジェクト", projectsNote: "各ページに課題、方法、現在の証拠、未解決点、次のステップを記録します。", allProjects: "すべてのプロジェクトを見る",
+    skillsKicker: "根拠のあるスキル", skillsTitle: "スキルを確認できる実作業と結び付ける。",
+    skills: [["MATLAB・モデリング", "2R運動学、Jacobian指標、作業空間と軌道の可視化。"], ["Python・ROS・システム", "ノード構成、知覚・制御モジュール、複数ロボット計画。"], ["制御・ロボティクス", "順運動学・逆運動学、数理モデル、工学的トレードオフ。"], ["開発ワークフロー", "Git、GitHub、Linux、Markdown、静的サイト公開、AI出力の手動検証。"]],
+    journeyKicker: "学業・留学", journeyTitle: "授業、プロジェクト、留学を一つの学習経路に。", journeyLinks: [["Academic Journey", "工学数学、機構、電子、制御を実践につなげる過程。"], ["NUPACE留学", "2026–2027年の履修計画、渡航準備、振り返り。"], ["履歴", "学歴、プロジェクト、技術ツール、語学力の要約。"]],
+    writingKicker: "記事", writingTitle: "工学的思考を明確にするためのノート。", writingNote: "ロボティクス、制御、留学、学習、AI支援ワークフロー。", allWriting: "すべての記事を見る",
+    contactKicker: "連絡先", contactTitle: "工学と学びについて話しましょう。", contactNote: "ロボティクス、制御工学、留学経験、学術プロジェクト、共同開発についての交流を歓迎します。",
+  },
+};
+
+function renderLocalizedHome(locale, projects) {
+  const copy = localizedHome[locale];
+  const prefix = localePrefixes[locale];
+  const projectCards = projects.slice(0, 4).map((project, index) => `<a class="project-card project-card-link reveal" href="./projects/${project.slug}/">
+            <div class="project-media ${projectMediaClass(index)}" aria-hidden="true"><span>${String(index + 1).padStart(2, "0")}</span></div>
+            <div class="project-content"><p class="project-type">${escapeHtml(project.category)}</p><h3>${escapeHtml(project.title)}</h3><p>${escapeHtml(project.excerpt)}</p>${renderProjectMeta(project, locale)}</div>
+          </a>`).join("\n");
+  const focus = copy.focus.map(([label, text]) => `<div><strong>${label}</strong><span>${text}</span></div>`).join("");
+  const skills = copy.skills.map(([title, text]) => `<div class="skill-group"><h3>${title}</h3><p>${text}</p></div>`).join("");
+  const journeyRoutes = ["academic-journey", "projects/nupace-exchange-prep", "resume"];
+  const journey = copy.journeyLinks.map(([title, text], index) => `<a href="./${journeyRoutes[index]}/"><strong>${title}</strong><span>${text}</span></a>`).join("");
+
+  return pageShell({
+    title: copy.title, description: copy.description, relativeRoot: "..", canonicalPath: `${prefix}/`, route: "/", locale,
+    content: `<section class="hero" id="top" aria-labelledby="hero-title"><img class="hero-image" src="../assets/hero-workspace.png" alt="Workspace overlooking Taipei" /><div class="hero-overlay" aria-hidden="true"></div><div class="hero-content reveal"><p class="kicker">${copy.kicker}</p><h1 id="hero-title">蕭士翔<br />Shih-Hsiang Hsiao</h1><p class="hero-lede">${copy.lede}</p><div class="hero-actions"><a class="button button-primary" href="#work">${copy.viewProjects}</a><a class="button button-ghost" href="./resume/">${copy.viewResume}</a><a class="button button-ghost" href="#contact">${copy.contact}</a></div><dl class="hero-meta"><div><dt>School</dt><dd>NTUST / Taiwan Tech</dd></div><div><dt>Exchange</dt><dd>Nagoya NUPACE</dd></div><div><dt>Focus</dt><dd>Control, Robotics, Modeling</dd></div></dl></div></section>
+      <section class="current-focus"><div class="section-inner reveal"><div class="focus-heading"><div><p class="kicker">Current Focus</p><h2>${copy.focusTitle}</h2></div><p class="updated-date">${copy.updated}</p></div><div class="focus-grid">${focus}</div><a class="text-link" href="./now/">${copy.nowLink}</a></div></section>
+      <section class="section" id="about"><div class="section-inner split-layout"><div class="section-heading reveal"><p class="kicker">${copy.aboutKicker}</p><h2>${copy.aboutTitle}</h2></div><div class="body-copy reveal">${copy.about.map((text) => `<p>${text}</p>`).join("")}</div></div></section>
+      <section class="section section-muted" id="work"><div class="section-inner"><div class="section-heading narrow reveal"><p class="kicker">${copy.projectsKicker}</p><h2>${copy.projectsTitle}</h2><p class="section-note">${copy.projectsNote}</p></div><div class="project-grid project-grid-featured">${projectCards}</div><a class="text-link dark-link" href="./projects/">${copy.allProjects}</a></div></section>
+      <section class="section"><div class="section-inner split-layout"><div class="section-heading reveal"><p class="kicker">${copy.skillsKicker}</p><h2>${copy.skillsTitle}</h2></div><div class="skills-panel reveal">${skills}</div></div></section>
+      <section class="section journey-preview"><div class="section-inner split-layout"><div class="section-heading reveal"><p class="kicker">${copy.journeyKicker}</p><h2>${copy.journeyTitle}</h2></div><div class="preview-links reveal">${journey}</div></div></section>
+      <section class="section section-muted"><div class="section-inner"><div class="section-heading narrow reveal"><p class="kicker">${copy.writingKicker}</p><h2>${copy.writingTitle}</h2><p class="section-note">${copy.writingNote}</p></div><div class="post-preview-grid" data-latest-posts><p class="post-loading">Loading…</p></div><a class="text-link dark-link" href="./blog/">${copy.allWriting}</a></div></section>
+      <section class="contact-section" id="contact"><div class="section-inner contact-layout reveal"><div><p class="kicker">${copy.contactKicker}</p><h2>${copy.contactTitle}</h2><p class="contact-note">${copy.contactNote}</p></div><div class="contact-actions"><a class="button button-primary" href="mailto:samhsiao0926@gmail.com">Email</a><a class="button button-secondary" href="https://github.com/Samuelsheshine" target="_blank" rel="noreferrer">GitHub</a><a class="button button-secondary" href="https://www.linkedin.com/in/shih-hsiang-hsiao-652182324/" target="_blank" rel="noreferrer">LinkedIn</a></div></div></section>`,
+  });
+}
+
+function buildLocalizedLocale(locale) {
+  const contentRoot = path.join(rootDir, "content", locale);
+  const outputRoot = path.join(distDir, locale);
+  const posts = readPosts(path.join(contentRoot, "posts"), locale);
+  const projects = readProjects(path.join(contentRoot, "projects"));
+  const pages = readPages(path.join(contentRoot, "pages"));
+
+  ensureDir(outputRoot);
+  fs.writeFileSync(path.join(outputRoot, "index.html"), renderLocalizedHome(locale, projects));
+
+  const blogDir = path.join(outputRoot, "blog");
+  const projectsDir = path.join(outputRoot, "projects");
+  ensureDir(blogDir);
+  ensureDir(projectsDir);
+  fs.writeFileSync(path.join(blogDir, "index.html"), renderBlogIndex(posts, locale, "../.."));
+  fs.writeFileSync(path.join(projectsDir, "index.html"), renderProjectsIndex(projects, locale, "../.."));
+
+  posts.forEach((post) => {
+    const postDir = path.join(outputRoot, "posts", post.slug);
+    ensureDir(postDir);
+    fs.writeFileSync(path.join(postDir, "index.html"), renderPost(post, locale, "../../.."));
+  });
+
+  projects.forEach((project) => {
+    const projectDir = path.join(projectsDir, project.slug);
+    ensureDir(projectDir);
+    fs.writeFileSync(path.join(projectDir, "index.html"), renderProject(project, locale, "../../.."));
+  });
+
+  pages.forEach((page) => {
+    const pageDir = path.join(outputRoot, page.slug);
+    ensureDir(pageDir);
+    fs.writeFileSync(path.join(pageDir, "index.html"), renderContentPage(page, locale, "../.."));
+  });
+
+  const manifest = posts.map((post) => ({
+    title: post.title, date: post.dateText, displayDate: post.displayDate, category: post.category,
+    readingTime: post.readingTime, excerpt: post.excerpt, slug: post.slug, url: `./posts/${post.slug}/`,
+  }));
+  fs.writeFileSync(path.join(outputRoot, "posts.json"), JSON.stringify(manifest, null, 2));
+
+  return [
+    `${localePrefixes[locale]}/`, `${localePrefixes[locale]}/blog/`, `${localePrefixes[locale]}/projects/`,
+    ...pages.map((page) => `${localePrefixes[locale]}/${page.slug}/`),
+    ...posts.map((post) => `${localePrefixes[locale]}/posts/${post.slug}/`),
+    ...projects.map((project) => `${localePrefixes[locale]}/projects/${project.slug}/`),
+  ];
 }
 
 function build() {
@@ -644,6 +827,8 @@ function build() {
 
   fs.writeFileSync(path.join(distDir, "projects.json"), JSON.stringify(projectsManifest, null, 2));
 
+  const localizedPaths = ["en", "ja"].flatMap(buildLocalizedLocale);
+
   const sitemapPaths = [
     "/",
     "/blog/",
@@ -651,6 +836,7 @@ function build() {
     ...pages.map((page) => `/${page.slug}/`),
     ...posts.map((post) => `/posts/${post.slug}/`),
     ...projects.map((project) => `/projects/${project.slug}/`),
+    ...localizedPaths,
   ];
   const sitemap = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${sitemapPaths.map((urlPath) => `  <url><loc>${siteUrl}${urlPath}</loc></url>`).join("\n")}\n</urlset>\n`;
   fs.writeFileSync(path.join(distDir, "sitemap.xml"), sitemap);
