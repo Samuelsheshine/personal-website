@@ -91,6 +91,123 @@ service cloud.firestore {
         && getAfter(/databases/$(database)/documents/posts/$(data.postId)).data.slug == slug;
     }
 
+    function hasValidSiteContentShape(locale, data) {
+      return locale in ["zh", "en", "ja"]
+        && data.keys().hasAll([
+          "locale",
+          "heroKicker",
+          "heroName",
+          "heroIntro",
+          "aboutTitle",
+          "aboutParagraphs",
+          "contactTitle",
+          "contactNote",
+          "contactEmail",
+          "updatedAt"
+        ])
+        && data.keys().hasOnly([
+          "locale",
+          "heroKicker",
+          "heroName",
+          "heroIntro",
+          "aboutTitle",
+          "aboutParagraphs",
+          "contactTitle",
+          "contactNote",
+          "contactEmail",
+          "updatedAt"
+        ])
+        && data.locale == locale
+        && data.heroKicker is string
+        && data.heroKicker.size() > 0
+        && data.heroKicker.size() <= 160
+        && data.heroName is string
+        && data.heroName.size() > 0
+        && data.heroName.size() <= 160
+        && data.heroIntro is string
+        && data.heroIntro.size() > 0
+        && data.heroIntro.size() <= 2000
+        && data.aboutTitle is string
+        && data.aboutTitle.size() > 0
+        && data.aboutTitle.size() <= 300
+        && data.aboutParagraphs is list
+        && data.aboutParagraphs.size() > 0
+        && data.aboutParagraphs.size() <= 10
+        && data.contactTitle is string
+        && data.contactTitle.size() > 0
+        && data.contactTitle.size() <= 300
+        && data.contactNote is string
+        && data.contactNote.size() <= 1000
+        && data.contactEmail is string
+        && data.contactEmail.size() > 3
+        && data.contactEmail.size() <= 320
+        && data.updatedAt is timestamp;
+    }
+
+    function hasValidProjectShape(projectId, data) {
+      return data.keys().hasAll([
+          "locale",
+          "title",
+          "slug",
+          "excerpt",
+          "content",
+          "order",
+          "category",
+          "status",
+          "year",
+          "role",
+          "stack",
+          "published",
+          "createdAt",
+          "updatedAt"
+        ])
+        && data.keys().hasOnly([
+          "locale",
+          "title",
+          "slug",
+          "excerpt",
+          "content",
+          "order",
+          "category",
+          "status",
+          "year",
+          "role",
+          "stack",
+          "published",
+          "createdAt",
+          "updatedAt"
+        ])
+        && data.locale in ["zh", "en", "ja"]
+        && projectId == data.locale + "--" + data.slug
+        && data.title is string
+        && data.title.size() > 0
+        && data.title.size() <= 200
+        && data.slug is string
+        && data.slug.size() > 0
+        && data.slug.size() <= 120
+        && data.slug.matches("^[a-z0-9]+(?:-[a-z0-9]+)*$")
+        && data.excerpt is string
+        && data.excerpt.size() <= 1000
+        && data.content is string
+        && data.content.size() <= 300000
+        && data.order is int
+        && data.order >= 0
+        && data.order <= 10000
+        && data.category is string
+        && data.category.size() <= 120
+        && data.status is string
+        && data.status.size() <= 80
+        && data.year is string
+        && data.year.size() <= 40
+        && data.role is string
+        && data.role.size() <= 160
+        && data.stack is list
+        && data.stack.size() <= 30
+        && data.published is bool
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
     match /posts/{postId} {
       allow read: if isAdmin() || resource.data.status == "published";
 
@@ -113,6 +230,32 @@ service cloud.firestore {
 
       allow create, update: if isAdmin()
         && validSlugReservation(slug, request.resource.data);
+
+      allow delete: if isAdmin();
+    }
+
+    match /siteContent/{locale} {
+      allow read: if locale in ["zh", "en", "ja"];
+
+      allow create, update: if isAdmin()
+        && hasValidSiteContentShape(locale, request.resource.data)
+        && request.resource.data.updatedAt == request.time;
+
+      allow delete: if isAdmin();
+    }
+
+    match /projects/{projectId} {
+      allow read: if isAdmin() || resource.data.published == true;
+
+      allow create: if isAdmin()
+        && hasValidProjectShape(projectId, request.resource.data)
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.updatedAt == request.time;
+
+      allow update: if isAdmin()
+        && hasValidProjectShape(projectId, request.resource.data)
+        && request.resource.data.createdAt == resource.data.createdAt
+        && request.resource.data.updatedAt == request.time;
 
       allow delete: if isAdmin();
     }

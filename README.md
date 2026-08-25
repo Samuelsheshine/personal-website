@@ -1,10 +1,10 @@
 # Sam Hsiao Personal Website
 
-這是一個可部署到 GitHub Pages 或 Firebase Hosting 的工程作品集，包含 Markdown 貼文、專案 case studies、Now、Academic Journey 與 Resume。網站維持原生 HTML、CSS、JavaScript 與自製靜態建置器，另外使用 Firebase Authentication、Cloud Firestore 與 Firebase Storage 提供登入後的貼文管理功能。
+這是一個可部署到 GitHub Pages 或 Firebase Hosting 的工程作品集，包含 Markdown 貼文、專案 case studies、Now、Academic Journey 與 Resume。網站維持原生 HTML、CSS、JavaScript 與自製靜態建置器，另外使用 Firebase Authentication、Cloud Firestore 與 Firebase Storage 提供登入後的內容管理功能。
 
-## 誰可以新增貼文
+## 誰可以管理內容
 
-`/admin/` 使用 Google Sign-In。只有 `FIREBASE_ADMIN_UID` 指定的 Firebase Authentication UID 會顯示管理介面，而且 Firestore／Storage Security Rules 會再次驗證同一個 UID；前端隱藏按鈕不是權限邊界。一般訪客只能讀取 `status == "published"` 的 Firestore 貼文。
+`/admin/` 使用 Google Sign-In。只有 `FIREBASE_ADMIN_UID` 指定的 Firebase Authentication UID 會顯示管理介面，而且 Firestore／Storage Security Rules 會再次驗證同一個 UID；前端隱藏按鈕不是權限邊界。管理員可編輯 Blog、三語首頁 Hero／About／Contact，以及三語 Projects。一般訪客只能讀取已發布的貼文與 Projects。
 
 原有 `content/posts/*.md` 仍會照原流程建置，既有文章不會消失。新管理後台建立的動態文章儲存在 Firestore，封面圖片儲存在 Storage。
 
@@ -14,9 +14,9 @@
 - `scripts/build-posts.js` 繼續產生三語靜態頁、manifest、sitemap 與 404 頁。
 - esbuild 只負責打包 Firebase Web SDK 與管理／公開貼文 JavaScript，不改變既有 UI 架構。
 - Firebase Authentication：Google 登入與 Auth User 狀態。
-- Cloud Firestore：`posts/{postId}` 儲存貼文；`postSlugs/{slug}` 在 transaction 中保證 slug 唯一。
+- Cloud Firestore：`posts/{postId}` 儲存貼文；`postSlugs/{slug}` 在 transaction 中保證 slug 唯一；`siteContent/{locale}` 儲存三語首頁文字；`projects/{locale--slug}` 儲存可編輯的三語 Projects。
 - Firebase Storage：`posts/{postId}/{uuid}.{ext}` 儲存封面圖片，單檔上限 5 MB。
-- GitHub Pages：目前既有部署方式；`404.html` 會處理 `/blog/{slug}/` 動態文章網址。
+- GitHub Pages：目前既有部署方式；`404.html` 會處理 `/blog/{slug}/` 與 `/projects/{slug}/` 動態網址。
 - Firebase Hosting：可選部署方式，`firebase.json` 已提供乾淨網址 rewrite。
 
 ## 修改內容
@@ -31,11 +31,11 @@
 - `content/ja/`：日文版的 pages、projects 與 posts。
 - `scripts/build-posts.js`：把 Markdown 貼文與專案轉成網站頁面。
 - `.github/workflows/pages.yml`：推到 GitHub 後自動部署到 GitHub Pages。
-- `admin/`：Google 登入、貼文列表、Markdown editor 與圖片上傳 UI。
+- `admin/`：Google 登入、Blog／首頁文字／Projects 管理、Markdown editor 與圖片上傳 UI。
 - `src/`：Firebase 管理端／公開端程式、slug 與安全 Markdown renderer。
-- `firestore.rules`：公開文章讀取與管理員寫入規則。
+- `firestore.rules`：公開文章、首頁文字、已發布 Projects 的讀取規則，以及管理員寫入規則。
 - `storage.rules`：已發布文章圖片讀取與管理員圖片操作規則。
-- `firestore.indexes.json`：發布文章列表需要的複合索引。
+- `firestore.indexes.json`：發布文章與三語 Projects 列表需要的複合索引。
 - `firebase.json`：Rules、indexes、emulators 與 Firebase Hosting 設定。
 
 ## Firebase 首次設定
@@ -99,12 +99,17 @@ Firebase Console 升級方案、建立預設 bucket 並選擇儲存位置；未�
 
 Storage Rules 第一次透過 `firestore.get()` 檢查文章發布狀態時，Firebase 可能要求啟用 Storage Rules 讀取 Firestore 的產品連線權限，依 Console 或 CLI 提示確認即可。
 
-公開文章列表的 query 是：
+公開文章與 Project 列表的 query 是：
 
 ```txt
 posts
   where status == "published"
   orderBy publishedAt desc
+
+projects
+  where locale == "zh" | "en" | "ja"
+  where published == true
+  orderBy order asc
 ```
 
 需要的 composite index 已寫在 `firestore.indexes.json`，隨 `firebase:deploy:rules` 一起部署。
@@ -116,6 +121,16 @@ posts
 3. 封面圖片會先上傳到 Storage，儲存貼文後 download URL 與 object path 會寫入 Firestore。
 4. 草稿只有管理員能讀取；改為「發布」後才會出現在 `/blog/` 與首頁最新文章。
 5. 刪除前會再次確認，確認後會交易式刪除貼文與 slug 保留資料，再清理 Storage 圖片。
+
+## 使用管理後台修改首頁與 Projects
+
+1. 開啟 `/admin/`，登入後切換到「首頁文字」。
+2. 第一次使用時按「首次匯入目前靜態內容」；這會建立三語首頁與現有 12 筆三語 Projects，不會覆寫已存在的 Firestore 文件。
+3. 首頁文字可分別選擇中文、英文、日文，修改 Hero 小標題／姓名／介紹、About 標題／段落，以及 Contact 標題／說明／Email。
+4. 切換到「Projects」可依語言新增、編輯、排序、發布、改為草稿或刪除 Project；內容使用 Markdown。
+5. 儲存後資料直接進入 Firestore，公開頁重新整理即可顯示，不需要另外 commit GitHub。靜態 HTML 仍保留原內容作為首次匯入前或 Firebase 暫時無法連線時的備援。
+
+首頁的「目前重點」、能力、學習歷程預覽與固定內容頁目前仍由 repository 的 `index.html`、`scripts/build-posts.js` 與 `content/pages/` 管理，尚未放進 Firestore 後台。
 
 ## 新增靜態 Markdown 貼文（既有流程）
 
@@ -225,7 +240,13 @@ description: 這個頁面的搜尋摘要。
 5. 到 repository 的 **Settings > Secrets and variables > Actions > Variables**，建立 `.env.example` 中的七個同名變數。
 6. 等待 `Actions` 執行 `npm ci`、lint、tests 與 build；完成後網站會出現在 GitHub Pages 提供的網址。
 
-GitHub Pages 只部署網站檔案，不會自動部署 Firestore／Storage Rules；Rules 仍需先用 `npm run firebase:deploy:rules` 部署到 Firebase project。
+GitHub Pages 只部署網站檔案，不會自動部署 Firestore／Storage Rules；Rules 仍需先部署到 Firebase project。尚未啟用 Storage 時，可先執行：
+
+```powershell
+npx firebase deploy --only firestore:rules,firestore:indexes
+```
+
+啟用 Storage 後再使用 `npm run firebase:deploy:rules` 一次部署全部規則。
 
 ## 發布到 Firebase Hosting（可選）
 

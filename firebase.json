@@ -30,6 +30,18 @@
       {
         "source": "/blog/**",
         "destination": "/blog/post/index.html"
+      },
+      {
+        "source": "/projects/**",
+        "destination": "/projects/project/index.html"
+      },
+      {
+        "source": "/en/projects/**",
+        "destination": "/en/projects/project/index.html"
+      },
+      {
+        "source": "/ja/projects/**",
+        "destination": "/ja/projects/project/index.html"
       }
     ]
   },

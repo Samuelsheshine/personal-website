@@ -35,6 +35,17 @@ function resolveRequestPath(pathname) {
     return path.join(distDir, "blog", "post", "index.html");
   }
 
+  const projectRoute = relativePath.match(/^(?:(en|ja)\/)?projects\/[^/]+\/?$/u);
+  if (projectRoute) {
+    return path.join(
+      distDir,
+      ...(projectRoute[1] ? [projectRoute[1]] : []),
+      "projects",
+      "project",
+      "index.html",
+    );
+  }
+
   return path.join(distDir, "404.html");
 }
 

@@ -553,13 +553,25 @@ function renderFirebasePostPage() {
   });
 }
 
+function firebasePublicScripts(relativeRoot) {
+  return `<script src="${relativeRoot}/firebase-config.js"></script>\n    <script type="module" src="${relativeRoot}/client/firebase-public.js"></script>`;
+}
+
 function githubPagesBlogRedirect() {
   return `<script>
     (() => {
-      const match = window.location.pathname.match(/^(.*\\/blog\\/)([^/]+)\\/?$/u);
-      if (!match || match[2] === "post") return;
-      const slug = encodeURIComponent(decodeURIComponent(match[2]));
-      window.location.replace(match[1] + "post/?slug=" + slug);
+      const blogMatch = window.location.pathname.match(/^(.*\\/blog\\/)([^/]+)\\/?$/u);
+      if (blogMatch && blogMatch[2] !== "post") {
+        const slug = encodeURIComponent(decodeURIComponent(blogMatch[2]));
+        window.location.replace(blogMatch[1] + "post/?slug=" + slug);
+        return;
+      }
+
+      const projectMatch = window.location.pathname.match(/^(.*\\/projects\\/)([^/]+)\\/?$/u);
+      if (projectMatch && projectMatch[2] !== "project") {
+        const slug = encodeURIComponent(decodeURIComponent(projectMatch[2]));
+        window.location.replace(projectMatch[1] + "project/?slug=" + slug);
+      }
     })();
   </script>`;
 }
@@ -623,10 +635,11 @@ function renderProjectsIndex(projects, locale = "zh", relativeRoot = "..") {
       </section>
 
       <section class="section">
-        <div class="section-inner project-list">
+        <div class="section-inner project-list" data-firestore-project-list data-locale="${locale}">
           ${list}
         </div>
       </section>`,
+    extraScripts: firebasePublicScripts(relativeRoot),
   });
 }
 
@@ -643,7 +656,7 @@ function renderProject(project, locale = "zh", relativeRoot = "../..") {
     canonicalPath: `${prefix}/projects/${project.slug}/`,
     route: `/projects/${project.slug}/`,
     locale,
-    content: `<article>
+    content: `<article data-firestore-project-article data-locale="${locale}" data-project-slug="${escapeHtml(project.slug)}">
         <header class="article-header">
           <div class="section-inner">
             <p class="post-meta">${escapeHtml(project.category)}</p>
@@ -673,6 +686,38 @@ function renderProject(project, locale = "zh", relativeRoot = "../..") {
           </div>
         </div>
       </article>`,
+    extraScripts: firebasePublicScripts(relativeRoot),
+  });
+}
+
+function firebaseProjectPlaceholder(locale = "zh") {
+  const loading = {
+    zh: ["專案", "正在載入專案", "正在從 Firestore 取得已發布內容。"],
+    en: ["Project", "Loading project", "Retrieving published content from Firestore."],
+    ja: ["プロジェクト", "プロジェクトを読み込み中", "Firestore から公開済みの内容を取得しています。"],
+  }[locale];
+  return `<article data-firestore-project-article data-locale="${locale}" data-project-slug="">
+    <section class="article-loading" aria-busy="true">
+      <div class="section-inner">
+        <span class="loading-spinner" aria-hidden="true"></span>
+        <div><p class="kicker">${loading[0]}</p><h1>${loading[1]}</h1><p>${loading[2]}</p></div>
+      </div>
+    </section>
+  </article>`;
+}
+
+function renderFirebaseProjectPage(locale = "zh", relativeRoot = "../..") {
+  const prefix = localePrefixes[locale];
+  return pageShell({
+    title: `${localeUi[locale].projects} | ${localeUi[locale].displayName}`,
+    description: localeUi[locale].noProjects,
+    relativeRoot,
+    canonicalPath: `${prefix}/projects/project/`,
+    route: "/projects/",
+    locale,
+    showLanguage: false,
+    content: firebaseProjectPlaceholder(locale),
+    extraScripts: firebasePublicScripts(relativeRoot),
   });
 }
 
@@ -782,6 +827,53 @@ const localizedHome = {
   },
 };
 
+const siteContentDefaults = {
+  zh: {
+    locale: "zh",
+    heroKicker: "機械工程・機器人・控制",
+    heroName: "蕭士翔",
+    heroIntro: "我在臺科大念工程。比起直接接受一個答案，我更想知道它為什麼成立，又會在哪裡失效。現在主要折騰控制、機器人與 AI，2026 年秋天也準備去名古屋大學交換。",
+    aboutTitle: "我很容易把一個問題想得比原本更深一點。",
+    aboutParagraphs: [
+      "我是蕭士翔，目前在臺科大念工程。碰到一個系統時，我常常不滿足於「它可以動」，還會繼續追問：為什麼這樣設計？極限在哪裡？換個方法會不會更好？這個習慣有時會讓我把事情想得太複雜，但也一路把我帶到控制、機器人、AI 和汽車。",
+      "我也很容易對工程以外的東西鑽得太深。看 F1 本來只是想知道誰贏，最後可能跑去研究輪胎策略；看偶像綜藝原本只是娛樂，後來又開始注意成員關係、選拔制度和整個產業怎麼運作。表面上興趣很散，背後其實都是同一種好奇：一群不同的人和零件，究竟怎麼一起形成一個系統。",
+      "這個網站是我替這些好奇心留下的工作桌。這裡不只放做完的成果，也保留還沒想通的問題、走過的彎路和下一步。畢竟工程最真實的樣子，通常不是一次就答對，而是慢慢知道自己原本錯在哪裡。",
+    ],
+    contactTitle: "如果你也正在研究一個還沒有標準答案的問題，歡迎找我聊聊。",
+    contactNote: "機器人、控制、交換、音樂、賽車，或只是某個你最近想得太深的問題，都可以。",
+    contactEmail: "samhsiao0926@gmail.com",
+  },
+  ...Object.fromEntries(Object.entries(localizedHome).map(([locale, copy]) => [locale, {
+    locale,
+    heroKicker: copy.kicker,
+    heroName: copy.heroName,
+    heroIntro: copy.lede,
+    aboutTitle: copy.aboutTitle,
+    aboutParagraphs: copy.about,
+    contactTitle: copy.contactTitle,
+    contactNote: copy.contactNote,
+    contactEmail: "samhsiao0926@gmail.com",
+  }])),
+};
+
+function editableProject(locale, project) {
+  return {
+    id: `${locale}--${project.slug}`,
+    locale,
+    title: project.title,
+    slug: project.slug,
+    excerpt: project.excerpt,
+    content: project.body,
+    order: project.order,
+    category: project.category,
+    status: project.status,
+    year: project.year,
+    role: project.role,
+    stack: project.stack,
+    published: true,
+  };
+}
+
 function renderLocalizedHome(locale, projects) {
   const copy = localizedHome[locale];
   const prefix = localePrefixes[locale];
@@ -797,14 +889,15 @@ function renderLocalizedHome(locale, projects) {
 
   return pageShell({
     title: copy.title, description: copy.description, relativeRoot: "..", canonicalPath: `${prefix}/`, route: "/", locale,
-    content: `<section class="hero" id="top" aria-labelledby="hero-title"><img class="hero-image" src="../assets/hero-workspace.png" alt="${copy.imageAlt}" /><div class="hero-overlay" aria-hidden="true"></div><div class="hero-content reveal"><p class="kicker">${copy.kicker}</p><h1 id="hero-title">${copy.heroName}</h1><p class="hero-lede">${copy.lede}</p><div class="hero-actions"><a class="button button-primary" href="#work">${copy.viewProjects}</a><a class="button button-ghost" href="./resume/">${copy.viewResume}</a><a class="button button-ghost" href="#contact">${copy.contact}</a></div><dl class="hero-meta">${copy.meta.map(([term, detail]) => `<div><dt>${term}</dt><dd>${detail}</dd></div>`).join("")}</dl></div></section>
+    content: `<div data-site-home data-locale="${locale}"><section class="hero" id="top" aria-labelledby="hero-title"><img class="hero-image" src="../assets/hero-workspace.png" alt="${copy.imageAlt}" /><div class="hero-overlay" aria-hidden="true"></div><div class="hero-content reveal"><p class="kicker" data-home-hero-kicker>${copy.kicker}</p><h1 id="hero-title" data-home-hero-name>${copy.heroName}</h1><p class="hero-lede" data-home-hero-intro>${copy.lede}</p><div class="hero-actions"><a class="button button-primary" href="#work">${copy.viewProjects}</a><a class="button button-ghost" href="./resume/">${copy.viewResume}</a><a class="button button-ghost" href="#contact">${copy.contact}</a></div><dl class="hero-meta">${copy.meta.map(([term, detail]) => `<div><dt>${term}</dt><dd>${detail}</dd></div>`).join("")}</dl></div></section>
       <section class="current-focus"><div class="section-inner reveal"><div class="focus-heading"><div><p class="kicker">${copy.currentKicker}</p><h2>${copy.focusTitle}</h2></div><p class="updated-date">${copy.updated}</p></div><div class="focus-grid">${focus}</div><a class="text-link" href="./now/">${copy.nowLink}</a></div></section>
-      <section class="section" id="about"><div class="section-inner split-layout"><div class="section-heading reveal"><p class="kicker">${copy.aboutKicker}</p><h2>${copy.aboutTitle}</h2></div><div class="body-copy reveal">${copy.about.map((text) => `<p>${text}</p>`).join("")}<div class="interest-preview">${interestSnapshot}</div><a class="interest-link" href="./interests/">${copy.interestLink}</a></div></div></section>
-      <section class="section section-muted" id="work"><div class="section-inner"><div class="section-heading narrow reveal"><p class="kicker">${copy.projectsKicker}</p><h2>${copy.projectsTitle}</h2><p class="section-note">${copy.projectsNote}</p></div><div class="project-grid project-grid-featured">${projectCards}</div><a class="text-link dark-link" href="./projects/">${copy.allProjects}</a></div></section>
+      <section class="section" id="about"><div class="section-inner split-layout"><div class="section-heading reveal"><p class="kicker">${copy.aboutKicker}</p><h2 data-home-about-title>${copy.aboutTitle}</h2></div><div class="body-copy reveal" data-home-about-paragraphs>${copy.about.map((text) => `<p>${text}</p>`).join("")}<div class="interest-preview">${interestSnapshot}</div><a class="interest-link" href="./interests/">${copy.interestLink}</a></div></div></section>
+      <section class="section section-muted" id="work"><div class="section-inner"><div class="section-heading narrow reveal"><p class="kicker">${copy.projectsKicker}</p><h2>${copy.projectsTitle}</h2><p class="section-note">${copy.projectsNote}</p></div><div class="project-grid project-grid-featured" data-firestore-project-featured data-locale="${locale}">${projectCards}</div><a class="text-link dark-link" href="./projects/">${copy.allProjects}</a></div></section>
       <section class="section"><div class="section-inner split-layout"><div class="section-heading reveal"><p class="kicker">${copy.skillsKicker}</p><h2>${copy.skillsTitle}</h2></div><div class="skills-panel reveal">${skills}</div></div></section>
       <section class="section journey-preview"><div class="section-inner split-layout"><div class="section-heading reveal"><p class="kicker">${copy.journeyKicker}</p><h2>${copy.journeyTitle}</h2></div><div class="preview-links reveal">${journey}</div></div></section>
       <section class="section section-muted"><div class="section-inner"><div class="section-heading narrow reveal"><p class="kicker">${copy.writingKicker}</p><h2>${copy.writingTitle}</h2><p class="section-note">${copy.writingNote}</p></div><div class="post-preview-grid" data-latest-posts><p class="post-loading">${copy.loading}</p></div><a class="text-link dark-link" href="./blog/">${copy.allWriting}</a></div></section>
-      <section class="contact-section" id="contact"><div class="section-inner contact-layout reveal"><div><p class="kicker">${copy.contactKicker}</p><h2>${copy.contactTitle}</h2><p class="contact-note">${copy.contactNote}</p></div><div class="contact-actions"><a class="button button-primary" href="mailto:samhsiao0926@gmail.com">Email</a><a class="button button-secondary" href="https://github.com/Samuelsheshine" target="_blank" rel="noreferrer">GitHub</a><a class="button button-secondary" href="https://www.linkedin.com/in/shih-hsiang-hsiao-652182324/" target="_blank" rel="noreferrer">LinkedIn</a></div></div></section>`,
+      <section class="contact-section" id="contact"><div class="section-inner contact-layout reveal"><div><p class="kicker">${copy.contactKicker}</p><h2 data-home-contact-title>${copy.contactTitle}</h2><p class="contact-note" data-home-contact-note>${copy.contactNote}</p></div><div class="contact-actions"><a class="button button-primary" href="mailto:samhsiao0926@gmail.com" data-home-contact-email>Email</a><a class="button button-secondary" href="https://github.com/Samuelsheshine" target="_blank" rel="noreferrer">GitHub</a><a class="button button-secondary" href="https://www.linkedin.com/in/shih-hsiang-hsiao-652182324/" target="_blank" rel="noreferrer">LinkedIn</a></div></div></section></div>`,
+    extraScripts: firebasePublicScripts(".."),
   });
 }
 
@@ -824,6 +917,9 @@ function buildLocalizedLocale(locale) {
   ensureDir(projectsDir);
   fs.writeFileSync(path.join(blogDir, "index.html"), renderBlogIndex(posts, locale, "../.."));
   fs.writeFileSync(path.join(projectsDir, "index.html"), renderProjectsIndex(projects, locale, "../.."));
+  const firebaseProjectDir = path.join(projectsDir, "project");
+  ensureDir(firebaseProjectDir);
+  fs.writeFileSync(path.join(firebaseProjectDir, "index.html"), renderFirebaseProjectPage(locale, "../../.."));
 
   posts.forEach((post) => {
     const postDir = path.join(outputRoot, "posts", post.slug);
@@ -875,6 +971,9 @@ async function build() {
   ensureDir(firebasePostOutputDir);
   fs.writeFileSync(path.join(firebasePostOutputDir, "index.html"), renderFirebasePostPage());
   fs.writeFileSync(path.join(projectsOutputDir, "index.html"), renderProjectsIndex(projects));
+  const firebaseProjectOutputDir = path.join(projectsOutputDir, "project");
+  ensureDir(firebaseProjectOutputDir);
+  fs.writeFileSync(path.join(firebaseProjectOutputDir, "index.html"), renderFirebaseProjectPage());
 
   posts.forEach((post) => {
     const postDir = path.join(postsOutputDir, post.slug);
@@ -918,6 +1017,23 @@ async function build() {
   }));
 
   fs.writeFileSync(path.join(distDir, "projects.json"), JSON.stringify(projectsManifest, null, 2));
+
+  const localizedProjectDefaults = ["en", "ja"].flatMap((locale) =>
+    readProjects(path.join(rootDir, "content", locale, "projects"))
+      .map((project) => editableProject(locale, project)),
+  );
+  const projectDefaults = [
+    ...projects.map((project) => editableProject("zh", project)),
+    ...localizedProjectDefaults,
+  ];
+  fs.writeFileSync(
+    path.join(distDir, "site-content-defaults.json"),
+    JSON.stringify(siteContentDefaults, null, 2),
+  );
+  fs.writeFileSync(
+    path.join(distDir, "project-defaults.json"),
+    JSON.stringify(projectDefaults, null, 2),
+  );
 
   const localizedPaths = ["en", "ja"].flatMap(buildLocalizedLocale);
 

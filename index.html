@@ -76,7 +76,7 @@
       </nav>
     </header>
 
-    <main id="main">
+    <main id="main" data-site-home data-locale="zh">
       <section class="hero" id="top" aria-labelledby="hero-title">
         <img
           class="hero-image"
@@ -86,9 +86,9 @@
         <div class="hero-overlay" aria-hidden="true"></div>
 
         <div class="hero-content reveal">
-          <p class="kicker">機械工程・機器人・控制</p>
-          <h1 id="hero-title">蕭士翔</h1>
-          <p class="hero-lede">
+          <p class="kicker" data-home-hero-kicker>機械工程・機器人・控制</p>
+          <h1 id="hero-title" data-home-hero-name>蕭士翔</h1>
+          <p class="hero-lede" data-home-hero-intro>
             我在臺科大念工程。比起直接接受一個答案，我更想知道它為什麼成立，又會在哪裡失效。現在主要折騰控制、機器人與 AI，2026 年秋天也準備去名古屋大學交換。
           </p>
           <div class="hero-actions" aria-label="主要行動">
@@ -151,9 +151,9 @@
         <div class="section-inner split-layout">
           <div class="section-heading reveal">
             <p class="kicker">關於我</p>
-            <h2 id="about-title">我很容易把一個問題想得比原本更深一點。</h2>
+            <h2 id="about-title" data-home-about-title>我很容易把一個問題想得比原本更深一點。</h2>
           </div>
-          <div class="body-copy reveal">
+          <div class="body-copy reveal" data-home-about-paragraphs>
             <p>
               我是蕭士翔，目前在臺科大念工程。碰到一個系統時，我常常不滿足於「它可以動」，還會繼續追問：為什麼這樣設計？極限在哪裡？換個方法會不會更好？這個習慣有時會讓我把事情想得太複雜，但也一路把我帶到控制、機器人、AI 和汽車。
             </p>
@@ -184,7 +184,7 @@
             </p>
           </div>
 
-          <div class="project-grid project-grid-featured">
+          <div class="project-grid project-grid-featured" data-firestore-project-featured data-locale="zh">
             <a class="project-card project-card-link reveal" href="./projects/2-dof-robot-arm/">
               <div class="project-media project-media-teal" aria-hidden="true">
                 <span>01</span>
@@ -311,11 +311,11 @@
         <div class="section-inner contact-layout reveal">
           <div>
             <p class="kicker">聯絡</p>
-            <h2 id="contact-title">如果你也正在研究一個還沒有標準答案的問題，歡迎找我聊聊。</h2>
-            <p class="contact-note">機器人、控制、交換、音樂、賽車，或只是某個你最近想得太深的問題，都可以。</p>
+            <h2 id="contact-title" data-home-contact-title>如果你也正在研究一個還沒有標準答案的問題，歡迎找我聊聊。</h2>
+            <p class="contact-note" data-home-contact-note>機器人、控制、交換、音樂、賽車，或只是某個你最近想得太深的問題，都可以。</p>
           </div>
           <div class="contact-actions">
-            <a class="button button-primary" href="mailto:samhsiao0926@gmail.com">
+            <a class="button button-primary" href="mailto:samhsiao0926@gmail.com" data-home-contact-email>
               <svg viewBox="0 0 24 24" aria-hidden="true">
                 <path d="M4 6h16v12H4z" />
                 <path d="m4 7 8 6 8-6" />

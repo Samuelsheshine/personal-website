@@ -10,12 +10,15 @@ import {
 import {
   collection,
   doc,
+  getDoc,
   getDocs,
   getFirestore,
   orderBy,
   query,
   runTransaction,
   serverTimestamp,
+  setDoc,
+  writeBatch,
 } from "firebase/firestore";
 import {
   deleteObject,
@@ -60,6 +63,32 @@ const elements = {
   uploadProgress: document.querySelector("[data-upload-progress]"),
   preview: document.querySelector("[data-markdown-preview]"),
   saveButton: document.querySelector("[data-save-post]"),
+  sitePanel: document.querySelector("[data-site-panel]"),
+  siteForm: document.querySelector("[data-site-content-form]"),
+  siteLocale: document.querySelector("#site-locale"),
+  siteSaveButton: document.querySelector("[data-save-site-content]"),
+  projectsPanel: document.querySelector("[data-projects-panel]"),
+  projectEditorPanel: document.querySelector("[data-project-editor-panel]"),
+  projectList: document.querySelector("[data-admin-project-list]"),
+  projectListLocale: document.querySelector("[data-project-list-locale]"),
+  emptyProjects: document.querySelector("[data-empty-projects]"),
+  projectListLoading: document.querySelector("[data-project-list-loading]"),
+  projectForm: document.querySelector("[data-project-form]"),
+  projectEditorTitle: document.querySelector("[data-project-editor-title]"),
+  projectLocale: document.querySelector("#project-locale"),
+  projectTitle: document.querySelector("#project-title"),
+  projectSlug: document.querySelector("#project-slug"),
+  projectExcerpt: document.querySelector("#project-excerpt"),
+  projectCategory: document.querySelector("#project-category"),
+  projectStatus: document.querySelector("#project-status"),
+  projectYear: document.querySelector("#project-year"),
+  projectRole: document.querySelector("#project-role"),
+  projectOrder: document.querySelector("#project-order"),
+  projectStack: document.querySelector("#project-stack"),
+  projectPublished: document.querySelector("#project-published"),
+  projectContent: document.querySelector("#project-content"),
+  projectPreview: document.querySelector("[data-project-markdown-preview]"),
+  projectSaveButton: document.querySelector("[data-save-project]"),
 };
 
 let auth;
@@ -75,6 +104,14 @@ let slugWasEdited = false;
 let isSaving = false;
 let isUploading = false;
 let isSigningIn = false;
+let activeSection = "posts";
+let projects = [];
+let currentProject = null;
+let projectSlugWasEdited = false;
+let isProjectSaving = false;
+let isSiteSaving = false;
+let siteDefaults = null;
+let projectDefaults = null;
 
 function escapeHtml(value) {
   return String(value ?? "")
@@ -106,6 +143,7 @@ function humanizeError(error) {
     "auth/popup-closed-by-user": "登入視窗已關閉，尚未完成登入。",
     "auth/unauthorized-domain": "目前網域尚未加入 Firebase Authentication 的授權網域。",
     "duplicate-slug": "這個 slug 已被其他文章使用，請改用另一個網址名稱。",
+    "duplicate-project-slug": "這個語言已經有相同的 Project slug，請改用另一個網址名稱。",
     "permission-denied": "Firebase 拒絕此操作。請確認登入 UID 與安全規則中的管理員 UID 相同。",
     "storage/unauthorized": "沒有圖片操作權限，請確認 Storage Rules 已部署。",
     "storage/retry-limit-exceeded": "圖片上傳多次重試仍失敗，請稍後再試。",
@@ -471,6 +509,347 @@ async function deletePost(post) {
   }
 }
 
+async function loadDefaultContent() {
+  if (siteDefaults && projectDefaults) return;
+  const [siteResponse, projectResponse] = await Promise.all([
+    fetch("../site-content-defaults.json"),
+    fetch("../project-defaults.json"),
+  ]);
+  if (!siteResponse.ok || !projectResponse.ok) {
+    throw new Error("無法載入目前網站的靜態預設內容，請重新建置網站後再試。");
+  }
+  [siteDefaults, projectDefaults] = await Promise.all([
+    siteResponse.json(),
+    projectResponse.json(),
+  ]);
+}
+
+function setActiveTab(section) {
+  activeSection = section;
+  document.querySelectorAll("[data-admin-tab]").forEach((button) => {
+    const active = button.dataset.adminTab === section;
+    button.classList.toggle("is-active", active);
+    button.setAttribute("aria-current", active ? "page" : "false");
+  });
+}
+
+async function switchAdminSection(section) {
+  setActiveTab(section);
+  document.querySelectorAll("[data-post-panel]").forEach((panel) => setVisible(panel, false));
+  setVisible(elements.sitePanel, section === "site");
+  setVisible(elements.projectsPanel, section === "projects");
+  setVisible(elements.projectEditorPanel, false);
+  setNotice();
+
+  if (section === "posts") {
+    await showListView({ discardUpload: true });
+    await loadPosts();
+  } else if (section === "site") {
+    await loadSiteContentForm(elements.siteLocale.value);
+  } else if (section === "projects") {
+    await loadProjects();
+  }
+}
+
+function populateSiteContentForm(content) {
+  const fields = elements.siteForm.elements;
+  fields.heroKicker.value = content?.heroKicker || "";
+  fields.heroName.value = content?.heroName || "";
+  fields.heroIntro.value = content?.heroIntro || "";
+  fields.aboutTitle.value = content?.aboutTitle || "";
+  fields.aboutParagraphs.value = Array.isArray(content?.aboutParagraphs)
+    ? content.aboutParagraphs.join("\n\n")
+    : "";
+  fields.contactTitle.value = content?.contactTitle || "";
+  fields.contactNote.value = content?.contactNote || "";
+  fields.contactEmail.value = content?.contactEmail || "";
+}
+
+async function loadSiteContentForm(locale) {
+  setNotice("正在載入首頁文字…", "info");
+  try {
+    await loadDefaultContent();
+    const snapshot = await getDoc(doc(db, "siteContent", locale));
+    populateSiteContentForm(snapshot.exists() ? snapshot.data() : siteDefaults[locale]);
+    setNotice(snapshot.exists() ? "" : "目前顯示靜態預設文字；儲存後才會寫入 Firestore。", "info");
+  } catch (error) {
+    populateSiteContentForm(siteDefaults?.[locale] || null);
+    setNotice(`首頁文字載入失敗：${humanizeError(error)}`, "error");
+  }
+}
+
+function siteContentFormData() {
+  const fields = elements.siteForm.elements;
+  const content = {
+    locale: fields.locale.value,
+    heroKicker: fields.heroKicker.value.trim(),
+    heroName: fields.heroName.value.trim(),
+    heroIntro: fields.heroIntro.value.trim(),
+    aboutTitle: fields.aboutTitle.value.trim(),
+    aboutParagraphs: fields.aboutParagraphs.value
+      .split(/\n\s*\n/u)
+      .map((paragraph) => paragraph.trim())
+      .filter(Boolean),
+    contactTitle: fields.contactTitle.value.trim(),
+    contactNote: fields.contactNote.value.trim(),
+    contactEmail: fields.contactEmail.value.trim(),
+  };
+  if (!content.heroKicker || !content.heroName || !content.heroIntro || !content.aboutTitle) {
+    throw new Error("首頁標題、姓名、介紹與 About 標題都不可留白。");
+  }
+  if (!content.aboutParagraphs.length || content.aboutParagraphs.length > 10) {
+    throw new Error("About 內文需有 1 到 10 個段落。");
+  }
+  if (!content.contactTitle || !content.contactEmail || !fields.contactEmail.checkValidity()) {
+    throw new Error("請填入聯絡區標題與有效的 Email。");
+  }
+  return content;
+}
+
+async function saveSiteContent(event) {
+  event.preventDefault();
+  if (isSiteSaving) return;
+  let content;
+  try {
+    content = siteContentFormData();
+  } catch (error) {
+    setNotice(error.message, "error");
+    return;
+  }
+
+  isSiteSaving = true;
+  elements.siteSaveButton.disabled = true;
+  elements.siteSaveButton.textContent = "儲存中…";
+  setNotice("正在儲存首頁文字…", "info");
+  try {
+    await setDoc(doc(db, "siteContent", content.locale), {
+      ...content,
+      updatedAt: serverTimestamp(),
+    });
+    setNotice("首頁文字已儲存，公開頁重新整理後就會顯示。", "success");
+  } catch (error) {
+    setNotice(`首頁文字儲存失敗：${humanizeError(error)}`, "error");
+  } finally {
+    isSiteSaving = false;
+    elements.siteSaveButton.disabled = false;
+    elements.siteSaveButton.textContent = "儲存這個語言";
+  }
+}
+
+async function importDefaultContent() {
+  const confirmed = window.confirm("確定要匯入目前網站的三語首頁與 Projects 嗎？\n\n只會建立 Firestore 中尚不存在的內容，不會覆寫你已經編輯過的資料。");
+  if (!confirmed) return;
+  setNotice("正在檢查並匯入靜態內容…", "info");
+  try {
+    await loadDefaultContent();
+    const siteItems = Object.values(siteDefaults);
+    const allItems = [
+      ...siteItems.map((content) => ({ type: "site", id: content.locale, content })),
+      ...projectDefaults.map((project) => ({ type: "project", id: project.id, content: project })),
+    ];
+    const snapshots = await Promise.all(allItems.map((item) =>
+      getDoc(doc(db, item.type === "site" ? "siteContent" : "projects", item.id)),
+    ));
+    const batch = writeBatch(db);
+    let created = 0;
+    allItems.forEach((item, index) => {
+      if (snapshots[index].exists()) return;
+      if (item.type === "site") {
+        const { locale, ...content } = item.content;
+        batch.set(doc(db, "siteContent", item.id), { locale, ...content, updatedAt: serverTimestamp() });
+      } else {
+        const project = { ...item.content };
+        delete project.id;
+        batch.set(doc(db, "projects", item.id), {
+          ...project,
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp(),
+        });
+      }
+      created += 1;
+    });
+    if (created) await batch.commit();
+    await loadSiteContentForm(elements.siteLocale.value);
+    setNotice(created ? `已匯入 ${created} 筆原本的網站內容。` : "所有靜態內容都已經存在，不需要重複匯入。", "success");
+  } catch (error) {
+    setNotice(`靜態內容匯入失敗：${humanizeError(error)}`, "error");
+  }
+}
+
+function renderProjectList() {
+  const locale = elements.projectListLocale.value;
+  const visibleProjects = projects
+    .filter((project) => project.locale === locale)
+    .sort((a, b) => a.order - b.order || a.title.localeCompare(b.title));
+  elements.projectList.innerHTML = visibleProjects.map((project) => `<article class="admin-post-row" data-project-id="${escapeHtml(project.id)}">
+    <div class="admin-post-main">
+      <span class="status-label status-${project.published ? "published" : "draft"}">${project.published ? "已發布" : "草稿"}</span>
+      <h3>${escapeHtml(project.title)}</h3>
+      <p class="admin-post-slug">/${locale === "zh" ? "" : `${locale}/`}projects/${escapeHtml(project.slug)}/</p>
+    </div>
+    <dl class="admin-post-dates">
+      <div><dt>排序</dt><dd>${escapeHtml(project.order)}</dd></div>
+      <div><dt>更新</dt><dd>${escapeHtml(formatDateTime(project.updatedAt))}</dd></div>
+    </dl>
+    <div class="admin-row-actions">
+      <button class="button button-secondary button-small" type="button" data-edit-project>編輯</button>
+      <button class="button button-danger button-small" type="button" data-delete-project>刪除</button>
+    </div>
+  </article>`).join("");
+  setVisible(elements.emptyProjects, visibleProjects.length === 0);
+}
+
+async function loadProjects() {
+  setVisible(elements.projectListLoading, true);
+  setVisible(elements.emptyProjects, false);
+  try {
+    const snapshot = await getDocs(collection(db, "projects"));
+    projects = snapshot.docs.map((projectDocument) => ({ id: projectDocument.id, ...projectDocument.data() }));
+    renderProjectList();
+  } catch (error) {
+    projects = [];
+    renderProjectList();
+    setNotice(`Projects 載入失敗：${humanizeError(error)}`, "error");
+  } finally {
+    setVisible(elements.projectListLoading, false);
+  }
+}
+
+function updateProjectPreview() {
+  const content = elements.projectContent.value.trim();
+  elements.projectPreview.innerHTML = content
+    ? renderMarkdown(content)
+    : '<p class="admin-preview-empty">Markdown 預覽會顯示在這裡。</p>';
+}
+
+function openProjectEditor(project = null) {
+  currentProject = project;
+  projectSlugWasEdited = Boolean(project);
+  elements.projectForm.reset();
+  elements.projectEditorTitle.textContent = project ? "編輯 Project" : "新增 Project";
+  elements.projectLocale.value = project?.locale || elements.projectListLocale.value;
+  elements.projectTitle.value = project?.title || "";
+  elements.projectSlug.value = project?.slug || "";
+  elements.projectExcerpt.value = project?.excerpt || "";
+  elements.projectCategory.value = project?.category || "";
+  elements.projectStatus.value = project?.status || "";
+  elements.projectYear.value = project?.year || "";
+  elements.projectRole.value = project?.role || "";
+  elements.projectOrder.value = project?.order ?? 999;
+  elements.projectStack.value = Array.isArray(project?.stack) ? project.stack.join(", ") : "";
+  elements.projectPublished.checked = Boolean(project?.published);
+  elements.projectContent.value = project?.content || "";
+  updateProjectPreview();
+  setVisible(elements.projectsPanel, false);
+  setVisible(elements.projectEditorPanel, true);
+  setNotice();
+  elements.projectTitle.focus();
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+function closeProjectEditor() {
+  currentProject = null;
+  projectSlugWasEdited = false;
+  elements.projectForm.reset();
+  setVisible(elements.projectEditorPanel, false);
+  setVisible(elements.projectsPanel, true);
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+function projectFormData() {
+  const locale = elements.projectLocale.value;
+  const title = elements.projectTitle.value.trim();
+  const slug = slugify(elements.projectSlug.value);
+  const order = Number.parseInt(elements.projectOrder.value || "999", 10);
+  if (!title) throw new Error("請輸入 Project 標題。");
+  if (!slug || !/^[a-z0-9]+(?:-[a-z0-9]+)*$/u.test(slug)) throw new Error("請輸入有效的英文／數字 slug。");
+  if (!Number.isInteger(order) || order < 0 || order > 10000) throw new Error("排序必須是 0 到 10000 的整數。");
+  elements.projectSlug.value = slug;
+  return {
+    locale,
+    title,
+    slug,
+    excerpt: elements.projectExcerpt.value.trim(),
+    content: elements.projectContent.value.trim(),
+    order,
+    category: elements.projectCategory.value.trim(),
+    status: elements.projectStatus.value.trim(),
+    year: elements.projectYear.value.trim(),
+    role: elements.projectRole.value.trim(),
+    stack: parseTags(elements.projectStack.value),
+    published: elements.projectPublished.checked,
+  };
+}
+
+async function saveProject(event) {
+  event.preventDefault();
+  if (isProjectSaving) return;
+  let data;
+  try {
+    data = projectFormData();
+  } catch (error) {
+    setNotice(error.message, "error");
+    return;
+  }
+  isProjectSaving = true;
+  elements.projectSaveButton.disabled = true;
+  elements.projectSaveButton.textContent = "儲存中…";
+  setNotice("正在儲存 Project…", "info");
+
+  try {
+    const newId = `${data.locale}--${data.slug}`;
+    await runTransaction(db, async (transaction) => {
+      const oldReference = currentProject ? doc(db, "projects", currentProject.id) : null;
+      const newReference = doc(db, "projects", newId);
+      const oldSnapshot = oldReference ? await transaction.get(oldReference) : null;
+      const targetSnapshot = oldReference?.path === newReference.path
+        ? oldSnapshot
+        : await transaction.get(newReference);
+      if (targetSnapshot?.exists()) {
+        const targetIsCurrent = currentProject && targetSnapshot.id === currentProject.id;
+        if (!targetIsCurrent) {
+          const error = new Error("Duplicate project slug");
+          error.code = "duplicate-project-slug";
+          throw error;
+        }
+      }
+      transaction.set(newReference, {
+        ...data,
+        createdAt: oldReference?.path === newReference.path && oldSnapshot?.exists()
+          ? oldSnapshot.data().createdAt
+          : serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      });
+      if (oldReference && oldReference.path !== newReference.path) transaction.delete(oldReference);
+    });
+    elements.projectListLocale.value = data.locale;
+    closeProjectEditor();
+    await loadProjects();
+    setNotice("Project 已儲存，公開頁重新整理後就會顯示。", "success");
+  } catch (error) {
+    setNotice(`Project 儲存失敗：${humanizeError(error)}`, "error");
+  } finally {
+    isProjectSaving = false;
+    elements.projectSaveButton.disabled = false;
+    elements.projectSaveButton.textContent = "儲存 Project";
+  }
+}
+
+async function deleteProject(project) {
+  const confirmed = window.confirm(`確定要刪除「${project.title}」嗎？\n\n這會刪除 ${project.locale.toUpperCase()} 版本，且無法復原。`);
+  if (!confirmed) return;
+  setNotice(`正在刪除「${project.title}」…`, "info");
+  try {
+    await runTransaction(db, async (transaction) => {
+      transaction.delete(doc(db, "projects", project.id));
+    });
+    await loadProjects();
+    setNotice("Project 已刪除。", "success");
+  } catch (error) {
+    setNotice(`Project 刪除失敗：${humanizeError(error)}`, "error");
+  }
+}
+
 async function handleSignIn() {
   if (isSigningIn) return;
   isSigningIn = true;
@@ -505,6 +884,11 @@ async function handleSignOut() {
 }
 
 function showAuthState(user) {
+  isSigningIn = false;
+  document.querySelectorAll("[data-sign-in]").forEach((button) => {
+    button.disabled = false;
+    button.removeAttribute("aria-busy");
+  });
   setVisible(elements.authLoading, false);
   setVisible(elements.signedOut, !user);
   setVisible(elements.unauthorized, false);
@@ -520,16 +904,44 @@ function showAuthState(user) {
 
   elements.userName.textContent = user.displayName || user.email || "管理員";
   setVisible(elements.dashboard, true);
-  showListView({ discardUpload: false });
-  loadPosts();
+  switchAdminSection(activeSection);
 }
 
 function registerEvents() {
   document.querySelectorAll("[data-sign-in]").forEach((button) => button.addEventListener("click", handleSignIn));
   document.querySelectorAll("[data-sign-out]").forEach((button) => button.addEventListener("click", handleSignOut));
   document.querySelector("[data-new-post]")?.addEventListener("click", () => openEditor());
-  document.querySelector("[data-cancel-editor]")?.addEventListener("click", () => showListView());
+  document.querySelectorAll("[data-cancel-editor]").forEach((button) => button.addEventListener("click", () => showListView()));
   elements.form?.addEventListener("submit", handleSave);
+
+  document.querySelectorAll("[data-admin-tab]").forEach((button) => {
+    button.addEventListener("click", () => switchAdminSection(button.dataset.adminTab));
+  });
+  elements.siteLocale?.addEventListener("change", () => loadSiteContentForm(elements.siteLocale.value));
+  elements.siteForm?.addEventListener("submit", saveSiteContent);
+  document.querySelector("[data-import-defaults]")?.addEventListener("click", importDefaultContent);
+  document.querySelector("[data-new-project]")?.addEventListener("click", () => openProjectEditor());
+  document.querySelectorAll("[data-cancel-project]").forEach((button) => button.addEventListener("click", closeProjectEditor));
+  elements.projectListLocale?.addEventListener("change", renderProjectList);
+  elements.projectForm?.addEventListener("submit", saveProject);
+  elements.projectList?.addEventListener("click", (event) => {
+    const row = event.target.closest("[data-project-id]");
+    if (!row) return;
+    const project = projects.find((item) => item.id === row.dataset.projectId);
+    if (!project) return;
+    if (event.target.closest("[data-edit-project]")) openProjectEditor(project);
+    if (event.target.closest("[data-delete-project]")) deleteProject(project);
+  });
+  elements.projectTitle?.addEventListener("input", () => {
+    if (!projectSlugWasEdited) elements.projectSlug.value = slugify(elements.projectTitle.value);
+  });
+  elements.projectSlug?.addEventListener("input", () => {
+    projectSlugWasEdited = true;
+  });
+  elements.projectSlug?.addEventListener("blur", () => {
+    elements.projectSlug.value = slugify(elements.projectSlug.value);
+  });
+  elements.projectContent?.addEventListener("input", updateProjectPreview);
 
   elements.postList?.addEventListener("click", (event) => {
     const row = event.target.closest("[data-post-id]");

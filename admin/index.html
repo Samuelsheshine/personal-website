@@ -4,8 +4,8 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="robots" content="noindex, nofollow" />
-    <title>貼文管理 | 蕭士翔</title>
-    <meta name="description" content="蕭士翔個人網站的貼文管理頁面。" />
+    <title>網站內容管理 | 蕭士翔</title>
+    <meta name="description" content="蕭士翔個人網站的內容管理頁面。" />
     <link rel="icon" href="../favicon.svg" type="image/svg+xml" />
     <link rel="stylesheet" href="../styles.css" />
     <link rel="stylesheet" href="./admin.css" />
@@ -18,7 +18,7 @@
       <nav class="nav admin-nav" aria-label="管理導覽">
         <a class="brand" href="../" aria-label="回到蕭士翔首頁">
           <span class="brand-mark">SH</span>
-          <span>貼文管理</span>
+          <span>網站管理</span>
         </a>
         <a class="button button-secondary button-small" href="../blog/">查看 Blog</a>
       </nav>
@@ -92,7 +92,7 @@
         <div class="admin-toolbar">
           <div>
             <p class="kicker">Content manager</p>
-            <h1>貼文管理</h1>
+            <h1>網站內容管理</h1>
             <p>你好，<span data-user-name>管理員</span>。</p>
           </div>
           <div class="admin-toolbar-actions">
@@ -100,7 +100,13 @@
           </div>
         </div>
 
-        <section data-list-view>
+        <nav class="admin-content-tabs" aria-label="內容類型">
+          <button class="admin-content-tab is-active" type="button" data-admin-tab="posts">Blog 貼文</button>
+          <button class="admin-content-tab" type="button" data-admin-tab="site">首頁文字</button>
+          <button class="admin-content-tab" type="button" data-admin-tab="projects">Projects</button>
+        </nav>
+
+        <section data-list-view data-post-panel>
           <div class="admin-section-heading">
             <div>
               <h2>全部貼文</h2>
@@ -121,7 +127,7 @@
           <div class="admin-post-list" data-admin-post-list></div>
         </section>
 
-        <section class="admin-editor" data-editor-view hidden>
+        <section class="admin-editor" data-editor-view data-post-panel hidden>
           <div class="admin-section-heading">
             <div>
               <button class="admin-back" type="button" data-cancel-editor>← 回貼文列表</button>
@@ -195,6 +201,85 @@
               <button class="button button-secondary" type="button" data-cancel-editor>取消</button>
               <button class="button button-primary" type="submit" data-save-post>儲存貼文</button>
             </div>
+          </form>
+        </section>
+
+        <section data-site-panel hidden>
+          <div class="admin-section-heading">
+            <div>
+              <h2>首頁文字</h2>
+              <p>三個語言分開儲存；公開頁會保留原本靜態文字作為斷線備援。</p>
+            </div>
+            <button class="button button-secondary" type="button" data-import-defaults>首次匯入目前靜態內容</button>
+          </div>
+
+          <form class="post-form compact-admin-form" data-site-content-form novalidate>
+            <label class="form-field" for="site-locale">
+              <span>語言</span>
+              <select id="site-locale" name="locale">
+                <option value="zh">中文</option>
+                <option value="en">English</option>
+                <option value="ja">日本語</option>
+              </select>
+            </label>
+            <div class="editor-fields">
+              <label class="form-field" for="site-hero-kicker"><span>首頁小標題</span><input id="site-hero-kicker" name="heroKicker" type="text" maxlength="160" required /></label>
+              <label class="form-field" for="site-hero-name"><span>姓名／主標題</span><input id="site-hero-name" name="heroName" type="text" maxlength="160" required /></label>
+              <label class="form-field" for="site-hero-intro"><span>首頁介紹</span><textarea id="site-hero-intro" name="heroIntro" rows="5" maxlength="2000" required></textarea></label>
+              <label class="form-field" for="site-about-title"><span>About 標題</span><input id="site-about-title" name="aboutTitle" type="text" maxlength="300" required /></label>
+              <label class="form-field" for="site-about-paragraphs"><span>About 內文</span><textarea id="site-about-paragraphs" name="aboutParagraphs" rows="12" required></textarea><small>每一段之間請空一行。</small></label>
+              <label class="form-field" for="site-contact-title"><span>聯絡區標題</span><input id="site-contact-title" name="contactTitle" type="text" maxlength="300" required /></label>
+              <label class="form-field" for="site-contact-note"><span>聯絡區說明</span><textarea id="site-contact-note" name="contactNote" rows="4" maxlength="1000"></textarea></label>
+              <label class="form-field" for="site-contact-email"><span>聯絡 Email</span><input id="site-contact-email" name="contactEmail" type="email" maxlength="320" required /></label>
+            </div>
+            <div class="editor-actions"><button class="button button-primary" type="submit" data-save-site-content>儲存這個語言</button></div>
+          </form>
+        </section>
+
+        <section data-projects-panel hidden>
+          <div class="admin-section-heading">
+            <div>
+              <h2>Projects</h2>
+              <p>每種語言有各自的專案內容；未發布的專案只有管理員看得到。</p>
+            </div>
+            <button class="button button-primary" type="button" data-new-project>新增 Project</button>
+          </div>
+          <label class="form-field admin-locale-filter" for="project-list-locale">
+            <span>列表語言</span>
+            <select id="project-list-locale" data-project-list-locale>
+              <option value="zh">中文</option>
+              <option value="en">English</option>
+              <option value="ja">日本語</option>
+            </select>
+          </label>
+          <div class="admin-loading" data-project-list-loading hidden><span class="loading-spinner" aria-hidden="true"></span><p>正在載入 Projects…</p></div>
+          <div class="admin-empty" data-empty-projects hidden><p class="kicker">Empty</p><h3>這個語言目前沒有 Project</h3><p>可以新增一個，或先使用首頁文字頁的匯入按鈕載入原本靜態內容。</p></div>
+          <div class="admin-post-list" data-admin-project-list></div>
+        </section>
+
+        <section class="admin-editor" data-project-editor-panel hidden>
+          <div class="admin-section-heading"><div><button class="admin-back" type="button" data-cancel-project>← 回 Project 列表</button><h2 data-project-editor-title>新增 Project</h2></div></div>
+          <form class="post-form" data-project-form novalidate>
+            <div class="editor-grid">
+              <div class="editor-fields">
+                <label class="form-field" for="project-locale"><span>語言</span><select id="project-locale" name="locale"><option value="zh">中文</option><option value="en">English</option><option value="ja">日本語</option></select></label>
+                <label class="form-field" for="project-title"><span>標題</span><input id="project-title" name="title" type="text" maxlength="200" required /></label>
+                <label class="form-field" for="project-slug"><span>Slug</span><input id="project-slug" name="slug" type="text" maxlength="120" required /><small>同一語言中不可重複；會成為 <code>/projects/your-slug/</code>。</small></label>
+                <label class="form-field" for="project-excerpt"><span>摘要</span><textarea id="project-excerpt" name="excerpt" rows="4" maxlength="1000"></textarea></label>
+                <label class="form-field" for="project-category"><span>分類</span><input id="project-category" name="category" type="text" maxlength="120" /></label>
+                <div class="admin-field-grid">
+                  <label class="form-field" for="project-status"><span>進度狀態</span><input id="project-status" name="status" type="text" maxlength="80" placeholder="開發中" /></label>
+                  <label class="form-field" for="project-year"><span>年份</span><input id="project-year" name="year" type="text" maxlength="40" /></label>
+                  <label class="form-field" for="project-role"><span>角色</span><input id="project-role" name="role" type="text" maxlength="160" /></label>
+                  <label class="form-field" for="project-order"><span>排序</span><input id="project-order" name="order" type="number" min="0" max="10000" step="1" value="999" /></label>
+                </div>
+                <label class="form-field" for="project-stack"><span>工具／標籤</span><input id="project-stack" name="stack" type="text" placeholder="MATLAB, Robotics, DLS" /><small>使用半形逗號分隔。</small></label>
+                <label class="form-checkbox" for="project-published"><input id="project-published" name="published" type="checkbox" /><span>發布到公開網站</span></label>
+                <label class="form-field" for="project-content"><span>Markdown 內容</span><textarea id="project-content" class="markdown-input" name="content" rows="22"></textarea></label>
+              </div>
+              <aside class="markdown-preview-panel" aria-label="Project Markdown 預覽"><p class="kicker">Preview</p><h3>內容預覽</h3><div class="prose admin-prose-preview" data-project-markdown-preview><p class="admin-preview-empty">Markdown 預覽會顯示在這裡。</p></div></aside>
+            </div>
+            <div class="editor-actions"><button class="button button-secondary" type="button" data-cancel-project>取消</button><button class="button button-primary" type="submit" data-save-project>儲存 Project</button></div>
           </form>
         </section>
       </section>

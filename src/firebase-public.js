@@ -11,12 +11,17 @@ import {
 } from "firebase/firestore";
 import { getFirebaseApp, hasFirebaseConfig } from "./firebase-core";
 import { estimateReadingTime, renderMarkdown } from "./markdown";
+import { slugify } from "./slug";
 
 const latestContainer = document.querySelector("[data-latest-posts]");
 const blogList = document.querySelector("[data-firestore-post-list]");
 const publicStatus = document.querySelector("[data-firestore-status]");
 const article = document.querySelector("[data-firestore-article]");
 const regularNotFound = document.querySelector("[data-regular-not-found]");
+const siteHome = document.querySelector("[data-site-home]");
+const projectList = document.querySelector("[data-firestore-project-list]");
+const featuredProjects = document.querySelector("[data-firestore-project-featured]");
+const projectArticle = document.querySelector("[data-firestore-project-article]");
 
 function escapeHtml(value) {
   return String(value ?? "")
@@ -56,6 +61,45 @@ function errorMessage(error) {
   return messages[error?.code] || "文章載入失敗，請重新整理後再試。";
 }
 
+function currentLocale(element = null) {
+  return element?.dataset.locale || siteHome?.dataset.locale || document.documentElement.lang.split("-")[0] || "zh";
+}
+
+function localizedCopy(locale) {
+  return {
+    zh: {
+      noProjects: "目前還沒有已發布的專案。",
+      projectMissing: "這個專案不存在、尚未發布，或已經被移除。",
+      backProjects: "回專案列表",
+      backHome: "回首頁",
+      year: "年份",
+      role: "角色",
+      tools: "工具／主題",
+      updating: "持續更新",
+    },
+    en: {
+      noProjects: "There are no published projects yet.",
+      projectMissing: "This project does not exist, is not published, or has been removed.",
+      backProjects: "Back to projects",
+      backHome: "Back to home",
+      year: "Year",
+      role: "Role",
+      tools: "Tools / Topics",
+      updating: "Continuously updated",
+    },
+    ja: {
+      noProjects: "公開済みのプロジェクトはまだありません。",
+      projectMissing: "このプロジェクトは存在しないか、未公開、または削除されています。",
+      backProjects: "プロジェクト一覧へ",
+      backHome: "ホームへ戻る",
+      year: "年度",
+      role: "役割",
+      tools: "ツール / テーマ",
+      updating: "継続更新",
+    },
+  }[locale] || null;
+}
+
 function tagMarkup(tags) {
   if (!Array.isArray(tags) || !tags.length) return "";
   return `<div class="tag-list post-tags" aria-label="標籤">${tags.map((tag) => `<span>${escapeHtml(tag)}</span>`).join("")}</div>`;
@@ -80,6 +124,7 @@ function postCardMarkup(post, href) {
 
 async function loadPublishedPosts() {
   if (!latestContainer && !blogList) return;
+  if (siteHome && currentLocale(siteHome) !== "zh") return;
   if (!hasFirebaseConfig()) return;
 
   try {
@@ -207,5 +252,192 @@ async function loadArticle() {
   }
 }
 
+function applySiteContent(content) {
+  const bindings = {
+    "[data-home-hero-kicker]": content.heroKicker,
+    "[data-home-hero-name]": content.heroName,
+    "[data-home-hero-intro]": content.heroIntro,
+    "[data-home-about-title]": content.aboutTitle,
+    "[data-home-contact-title]": content.contactTitle,
+    "[data-home-contact-note]": content.contactNote,
+  };
+
+  Object.entries(bindings).forEach(([selector, value]) => {
+    const element = siteHome.querySelector(selector);
+    if (element && typeof value === "string") element.textContent = value;
+  });
+
+  const about = siteHome.querySelector("[data-home-about-paragraphs]");
+  if (about && Array.isArray(content.aboutParagraphs) && content.aboutParagraphs.length) {
+    about.querySelectorAll(":scope > p").forEach((paragraph) => paragraph.remove());
+    const firstNonParagraph = about.firstElementChild;
+    content.aboutParagraphs.forEach((text) => {
+      const paragraph = document.createElement("p");
+      paragraph.textContent = text;
+      about.insertBefore(paragraph, firstNonParagraph);
+    });
+  }
+
+  const email = siteHome.querySelector("[data-home-contact-email]");
+  if (email && content.contactEmail) {
+    email.href = `mailto:${content.contactEmail}`;
+    email.textContent = content.contactEmail;
+  }
+}
+
+async function loadSiteContent() {
+  if (!siteHome || !hasFirebaseConfig()) return;
+  try {
+    const db = getFirestore(getFirebaseApp());
+    const snapshot = await getDoc(doc(db, "siteContent", currentLocale(siteHome)));
+    if (snapshot.exists()) applySiteContent(snapshot.data());
+  } catch {
+    // The static HTML remains a complete, readable fallback when Firestore is unavailable.
+  }
+}
+
+function projectStatusClass(status) {
+  return `status-${slugify(status || "ongoing")}`;
+}
+
+function projectMetaMarkup(project) {
+  const stack = Array.isArray(project.stack) && project.stack.length
+    ? `<div class="tag-list">${project.stack.map((item) => `<span>${escapeHtml(item)}</span>`).join("")}</div>`
+    : "";
+  return `<div class="card-meta"><span class="status-label ${projectStatusClass(project.status)}">${escapeHtml(project.status)}</span>${stack}</div>`;
+}
+
+function projectCardMarkup(project, href, index) {
+  const mediaClasses = ["project-media-teal", "project-media-coral", "project-media-sage", "project-media-graphite"];
+  return `<a class="project-card project-card-link reveal is-visible" href="${escapeHtml(href)}">
+    <div class="project-media ${mediaClasses[index % mediaClasses.length]}" aria-hidden="true">
+      <span>${String(index + 1).padStart(2, "0")}</span>
+    </div>
+    <div class="project-content">
+      <p class="project-type">${escapeHtml(project.category)}</p>
+      <h3>${escapeHtml(project.title)}</h3>
+      <p>${escapeHtml(project.excerpt)}</p>
+      ${projectMetaMarkup(project)}
+    </div>
+  </a>`;
+}
+
+async function loadPublishedProjects() {
+  const container = projectList || featuredProjects;
+  if (!container || !hasFirebaseConfig()) return;
+  const locale = currentLocale(container);
+
+  try {
+    const db = getFirestore(getFirebaseApp());
+    const projectsQuery = query(
+      collection(db, "projects"),
+      where("locale", "==", locale),
+      where("published", "==", true),
+      orderBy("order", "asc"),
+      limit(projectList ? 100 : 4),
+    );
+    const [snapshot, contentMarker] = await Promise.all([
+      getDocs(projectsQuery),
+      getDoc(doc(db, "siteContent", locale)),
+    ]);
+    if (!contentMarker.exists()) return;
+
+    const projects = snapshot.docs.map((projectDocument) => ({
+      id: projectDocument.id,
+      ...projectDocument.data(),
+    }));
+    const copy = localizedCopy(locale);
+    if (!projects.length) {
+      container.innerHTML = `<p class="post-loading">${escapeHtml(copy.noProjects)}</p>`;
+      return;
+    }
+
+    container.innerHTML = projects.map((project, index) => {
+      const href = projectList
+        ? `./${encodeURIComponent(project.slug)}/`
+        : `./projects/${encodeURIComponent(project.slug)}/`;
+      return projectCardMarkup(project, href, index);
+    }).join("");
+  } catch (error) {
+    if (error?.code === "failed-precondition" && projectList) {
+      projectList.insertAdjacentHTML("afterbegin", '<p class="post-loading notice-error">專案索引尚未建立，請稍後再試。</p>');
+    }
+  }
+}
+
+function resolveProjectSlug() {
+  const querySlug = new URLSearchParams(window.location.search).get("slug");
+  if (querySlug) return querySlug;
+  if (projectArticle?.dataset.projectSlug) return projectArticle.dataset.projectSlug;
+  const segments = window.location.pathname.split("/").filter(Boolean);
+  const projectsIndex = segments.lastIndexOf("projects");
+  const pathSlug = projectsIndex >= 0 ? segments[projectsIndex + 1] : "";
+  return pathSlug && pathSlug !== "project" ? decodeURIComponent(pathSlug) : "";
+}
+
+function replaceProjectFallbackUrl(slug) {
+  const hasFallbackQuery = new URLSearchParams(window.location.search).has("slug");
+  if (!hasFallbackQuery || !/\/projects\/project\/?$/u.test(window.location.pathname)) return;
+  const cleanUrl = new URL(`../${encodeURIComponent(slug)}/`, window.location.href);
+  window.history.replaceState(null, "", `${cleanUrl.pathname}${cleanUrl.hash}`);
+}
+
+function renderProjectArticle(project, locale) {
+  const copy = localizedCopy(locale);
+  const stackText = Array.isArray(project.stack) && project.stack.length
+    ? project.stack.join(", ")
+    : copy.updating;
+  document.title = `${project.title} | 蕭士翔`;
+  const description = document.querySelector('meta[name="description"]');
+  if (description) description.setAttribute("content", project.excerpt || project.title);
+
+  projectArticle.innerHTML = `<header class="article-header">
+      <div class="section-inner">
+        <p class="post-meta">${escapeHtml(project.category)}</p>
+        <span class="status-label ${projectStatusClass(project.status)}">${escapeHtml(project.status)}</span>
+        <h1>${escapeHtml(project.title)}</h1>
+        <p>${escapeHtml(project.excerpt)}</p>
+        <div class="project-facts">
+          <div class="project-fact"><strong>${copy.year}</strong><span>${escapeHtml(project.year || copy.updating)}</span></div>
+          <div class="project-fact"><strong>${copy.role}</strong><span>${escapeHtml(project.role || copy.updating)}</span></div>
+          <div class="project-fact"><strong>${copy.tools}</strong><span>${escapeHtml(stackText)}</span></div>
+        </div>
+      </div>
+    </header>
+    <div class="article-body"><div class="section-inner prose">${renderMarkdown(project.content || "")}</div></div>`;
+}
+
+function showProjectError(locale) {
+  const copy = localizedCopy(locale);
+  projectArticle.innerHTML = `<section class="not-found"><div class="section-inner"><p class="kicker">Project</p><h1>${escapeHtml(copy.projectMissing)}</h1><div class="hero-actions"><a class="button button-primary" href="../">${escapeHtml(copy.backProjects)}</a><a class="button button-secondary" href="../../">${escapeHtml(copy.backHome)}</a></div></div></section>`;
+}
+
+async function loadProjectArticle() {
+  if (!projectArticle || !hasFirebaseConfig()) return;
+  const locale = currentLocale(projectArticle);
+  const slug = resolveProjectSlug();
+  const isStaticFallback = Boolean(projectArticle.dataset.projectSlug);
+  if (!slug) {
+    if (!isStaticFallback) showProjectError(locale);
+    return;
+  }
+  replaceProjectFallbackUrl(slug);
+
+  try {
+    const db = getFirestore(getFirebaseApp());
+    const snapshot = await getDoc(doc(db, "projects", `${locale}--${slug}`));
+    if (!snapshot.exists()) {
+      if (!isStaticFallback) showProjectError(locale);
+      return;
+    }
+    renderProjectArticle({ id: snapshot.id, ...snapshot.data() }, locale);
+  } catch (error) {
+    if (!isStaticFallback || error?.code === "permission-denied") showProjectError(locale);
+  }
+}
+
 loadPublishedPosts();
 loadArticle();
+loadSiteContent();
+loadPublishedProjects();
+loadProjectArticle();

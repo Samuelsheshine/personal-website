@@ -18,6 +18,19 @@ test("Firestore rules gate public post reads by published status", () => {
   assert.match(firestoreRules, /slugPointsToPost/);
 });
 
+test("Firestore rules expose editable site content with admin-only writes", () => {
+  assert.match(firestoreRules, /match \/siteContent\/\{locale\}/);
+  assert.match(firestoreRules, /hasValidSiteContentShape\(locale, request\.resource\.data\)/);
+  assert.match(firestoreRules, /allow create, update: if isAdmin\(\)/);
+});
+
+test("Firestore rules expose only published projects to the public", () => {
+  assert.match(firestoreRules, /match \/projects\/\{projectId\}/);
+  assert.match(firestoreRules, /resource\.data\.published == true/);
+  assert.match(firestoreRules, /projectId == data\.locale \+ "--" \+ data\.slug/);
+  assert.match(firestoreRules, /hasValidProjectShape\(projectId, request\.resource\.data\)/);
+});
+
 test("Storage rules require admin writes and enforce image limits", () => {
   assert.match(storageRules, /allow create, update: if isAdmin\(\) && isValidImageUpload\(\)/);
   assert.match(storageRules, /request\.resource\.size <= 5 \* 1024 \* 1024/);
