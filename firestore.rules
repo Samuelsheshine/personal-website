@@ -130,9 +130,7 @@ service cloud.firestore {
         && data.aboutTitle is string
         && data.aboutTitle.size() > 0
         && data.aboutTitle.size() <= 300
-        && data.aboutParagraphs is list
-        && data.aboutParagraphs.size() > 0
-        && data.aboutParagraphs.size() <= 10
+        && hasValidAboutParagraphs(data.aboutParagraphs)
         && data.contactTitle is string
         && data.contactTitle.size() > 0
         && data.contactTitle.size() <= 300
@@ -142,6 +140,23 @@ service cloud.firestore {
         && data.contactEmail.size() > 3
         && data.contactEmail.size() <= 320
         && data.updatedAt is timestamp;
+    }
+
+    function hasValidAboutParagraphs(paragraphs) {
+      return paragraphs is list
+        && paragraphs.size() > 0
+        && paragraphs.size() <= 10
+        && paragraphs[0] is string
+        && paragraphs[0].size() > 0
+        && (paragraphs.size() < 2 || (paragraphs[1] is string && paragraphs[1].size() > 0))
+        && (paragraphs.size() < 3 || (paragraphs[2] is string && paragraphs[2].size() > 0))
+        && (paragraphs.size() < 4 || (paragraphs[3] is string && paragraphs[3].size() > 0))
+        && (paragraphs.size() < 5 || (paragraphs[4] is string && paragraphs[4].size() > 0))
+        && (paragraphs.size() < 6 || (paragraphs[5] is string && paragraphs[5].size() > 0))
+        && (paragraphs.size() < 7 || (paragraphs[6] is string && paragraphs[6].size() > 0))
+        && (paragraphs.size() < 8 || (paragraphs[7] is string && paragraphs[7].size() > 0))
+        && (paragraphs.size() < 9 || (paragraphs[8] is string && paragraphs[8].size() > 0))
+        && (paragraphs.size() < 10 || (paragraphs[9] is string && paragraphs[9].size() > 0));
     }
 
     function hasValidProjectShape(projectId, data) {

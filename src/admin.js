@@ -566,7 +566,9 @@ function populateSiteContentForm(content) {
   fields.heroIntro.value = content?.heroIntro || "";
   fields.aboutTitle.value = content?.aboutTitle || "";
   fields.aboutParagraphs.value = Array.isArray(content?.aboutParagraphs)
-    ? content.aboutParagraphs.join("\n\n")
+    ? content.aboutParagraphs
+      .filter((paragraph) => typeof paragraph === "string")
+      .join("\n\n")
     : "";
   fields.contactTitle.value = content?.contactTitle || "";
   fields.contactNote.value = content?.contactNote || "";

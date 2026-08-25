@@ -268,10 +268,13 @@ function applySiteContent(content) {
   });
 
   const about = siteHome.querySelector("[data-home-about-paragraphs]");
-  if (about && Array.isArray(content.aboutParagraphs) && content.aboutParagraphs.length) {
+  const aboutParagraphs = Array.isArray(content.aboutParagraphs)
+    ? content.aboutParagraphs.filter((text) => typeof text === "string" && text.trim())
+    : [];
+  if (about && aboutParagraphs.length) {
     about.querySelectorAll(":scope > p").forEach((paragraph) => paragraph.remove());
     const firstNonParagraph = about.firstElementChild;
-    content.aboutParagraphs.forEach((text) => {
+    aboutParagraphs.forEach((text) => {
       const paragraph = document.createElement("p");
       paragraph.textContent = text;
       about.insertBefore(paragraph, firstNonParagraph);

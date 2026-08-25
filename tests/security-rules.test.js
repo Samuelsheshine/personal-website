@@ -21,6 +21,8 @@ test("Firestore rules gate public post reads by published status", () => {
 test("Firestore rules expose editable site content with admin-only writes", () => {
   assert.match(firestoreRules, /match \/siteContent\/\{locale\}/);
   assert.match(firestoreRules, /hasValidSiteContentShape\(locale, request\.resource\.data\)/);
+  assert.match(firestoreRules, /hasValidAboutParagraphs\(data\.aboutParagraphs\)/);
+  assert.match(firestoreRules, /paragraphs\[9\] is string/);
   assert.match(firestoreRules, /allow create, update: if isAdmin\(\)/);
 });
 
