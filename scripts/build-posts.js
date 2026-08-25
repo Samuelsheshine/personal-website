@@ -17,7 +17,7 @@ const distDir = path.join(rootDir, "dist");
 const postsOutputDir = path.join(distDir, "posts");
 const blogOutputDir = path.join(distDir, "blog");
 const projectsOutputDir = path.join(distDir, "projects");
-const staticEntries = ["index.html", "styles.css", "script.js", "favicon.svg", ".nojekyll", "assets", "admin"];
+const staticEntries = ["styles.css", "script.js", "favicon.svg", ".nojekyll", "assets", "admin"];
 const localePrefixes = { zh: "", en: "/en", ja: "/ja" };
 
 loadLocalEnvironment(rootDir);
@@ -408,7 +408,7 @@ function alternateLinks(route) {
     .join("\n    ");
 }
 
-function pageShell({ title, description, content, relativeRoot = ".", canonicalPath = "/", locale = "zh", route = canonicalPath, showLanguage = true, extraScripts = "" }) {
+function pageShell({ title, description, content, relativeRoot = ".", canonicalPath = "/", locale = "zh", route = canonicalPath, showLanguage = true, extraScripts = "", bodyClass = "" }) {
   const ui = localeUi[locale];
   const canonicalUrl = `${siteUrl}${canonicalPath}`;
   return `<!doctype html>
@@ -429,7 +429,7 @@ function pageShell({ title, description, content, relativeRoot = ".", canonicalP
     <link rel="icon" href="${relativeRoot}/favicon.svg" type="image/svg+xml" />
     <link rel="stylesheet" href="${relativeRoot}/styles.css" />
   </head>
-  <body>
+  <body${bodyClass ? ` class="${escapeHtml(bodyClass)}"` : ""}>
     <a class="skip-link" href="#main">${ui.skip}</a>
 
     <header class="site-header">
@@ -782,6 +782,29 @@ function renderContentPage(page, locale = "zh", relativeRoot = "..") {
 }
 
 const localizedHome = {
+  zh: {
+    heroName: "蕭士翔", imageAlt: "明亮的工作桌與台北城市景色",
+    title: "蕭士翔 | 機械工程・機器人・控制",
+    description: "蕭士翔的工程個人網站，記錄機器人、控制、系統建模、AI 輔助學習與名古屋大學 NUPACE 交換。",
+    kicker: "機械工程・機器人・控制",
+    lede: "我在臺科大念工程。比起直接接受一個答案，我更想知道它為什麼成立，又會在哪裡失效。現在主要折騰控制、機器人與 AI，2026 年秋天也準備去名古屋大學交換。",
+    viewProjects: "查看專題", viewResume: "查看履歷", contact: "聯絡我",
+    currentKicker: "目前重點", loading: "正在載入文章…",
+    meta: [["學校", "國立臺灣科技大學"], ["交換", "名古屋大學 NUPACE"], ["方向", "控制、機器人與系統建模"]],
+    focusTitle: "最近，我把時間花在這些事情上。", updated: "最後更新：2026-07-11",
+    focus: [["交換", "名古屋大學 NUPACE 行前準備"], ["機器人", "農業採收雙機協作系統"], ["控制", "2-DOF 奇異點分析與 DLS"], ["工作流程", "公開工程知識庫與可重現紀錄"]],
+    nowLink: "查看完整近況",
+    aboutKicker: "關於我", aboutTitle: "我很容易把一個問題想得比原本更深一點。",
+    about: ["我是蕭士翔，目前在臺科大念工程。碰到一個系統時，我常常不滿足於「它可以動」，還會繼續追問：為什麼這樣設計？極限在哪裡？換個方法會不會更好？這個習慣有時會讓我把事情想得太複雜，但也一路把我帶到控制、機器人、AI 和汽車。", "我也很容易對工程以外的東西鑽得太深。看 F1 本來只是想知道誰贏，最後可能跑去研究輪胎策略；看偶像綜藝原本只是娛樂，後來又開始注意成員關係、選拔制度和整個產業怎麼運作。表面上興趣很散，背後其實都是同一種好奇：一群不同的人和零件，究竟怎麼一起形成一個系統。", "這個網站是我替這些好奇心留下的工作桌。這裡不只放做完的成果，也保留還沒想通的問題、走過的彎路和下一步。畢竟工程最真實的樣子，通常不是一次就答對，而是慢慢知道自己原本錯在哪裡。"],
+    interestSnapshot: [["工程", "控制、機器人、AI 與移動科技"], ["體育", "羽球、F1、MLB 與 NBA"], ["文化", "日本偶像、動漫與日文"], ["音樂", "流行、Hip-hop、R&B 與影視原聲"]],
+    interestLink: "查看完整興趣",
+    projectsKicker: "精選專題", projectsTitle: "有些問題，我想親手追到答案出現。", projectsNote: "這些專題都還在長大。我把已經驗證的、仍然猜測的，以及接下來要做的事分開記錄。", allProjects: "看全部專案",
+    skillsKicker: "能力與證據", skillsTitle: "工具名稱不難列，真的拿它解過什麼才重要。",
+    skills: [["MATLAB 與建模", "2R 運動學、Jacobian 指標、工作空間與軌跡視覺化。"], ["Python、ROS 與系統", "資料處理、ROS 節點規劃、感知與控制模組拆分。"], ["控制與機器人", "Forward / inverse kinematics、數學建模與系統架構。"], ["開發工作流程", "Git、GitHub、Linux、Markdown、GitHub Pages 與 AI 輔助查核。"]],
+    journeyKicker: "學習與交換", journeyTitle: "把課程、專題與交換放在同一條學習路徑上。", journeyLinks: [["學習歷程", "工程數學、機構、電子、控制與機器人如何連結到實作。"], ["NUPACE 交換", "2026–2027 名古屋大學交換的課程規劃、行前準備與紀錄。"], ["履歷", "教育、專題、技術能力與語言背景的精簡整理。"]],
+    writingKicker: "文章", writingTitle: "有些事情，寫下來才知道自己其實還沒想懂。", writingNote: "機器人、控制、交換生活、AI 工具，以及那些讓下一次嘗試變好的錯誤。", allWriting: "看全部貼文",
+    contactKicker: "聯絡", contactTitle: "如果你也正在研究一個還沒有標準答案的問題，歡迎找我聊聊。", contactNote: "機器人、控制、交換、音樂、賽車，或只是某個你最近想得太深的問題，都可以。",
+  },
   en: {
     heroName: "HSIAO SHIH HSIANG",
     imageAlt: "A bright workspace overlooking Taipei",
@@ -881,27 +904,56 @@ function editableProject(locale, project) {
 function renderLocalizedHome(locale, projects) {
   const copy = localizedHome[locale];
   const prefix = localePrefixes[locale];
-  const projectCards = projects.slice(0, 4).map((project, index) => `<a class="project-card project-card-link reveal" href="./projects/${project.slug}/">
-            <div class="project-media ${projectMediaClass(index)}" aria-hidden="true"><span>${String(index + 1).padStart(2, "0")}</span></div>
-            <div class="project-content"><p class="project-type">${escapeHtml(project.category)}</p><h3>${escapeHtml(project.title)}</h3><p>${escapeHtml(project.excerpt)}</p>${renderProjectMeta(project, locale)}</div>
+  const relativeRoot = locale === "zh" ? "." : "..";
+  const ui = {
+    zh: { overview: "總覽", about: "關於", activity: "動態", projects: "專題", writing: "文章", intro: "個人簡介", details: "基本資料", interests: "興趣", featured: "精選內容", recent: "最近動態", connect: "聯絡方式" },
+    en: { overview: "Overview", about: "About", activity: "Activity", projects: "Projects", writing: "Writing", intro: "Intro", details: "Details", interests: "Interests", featured: "Featured", recent: "Recent activity", connect: "Contact" },
+    ja: { overview: "概要", about: "プロフィール", activity: "アクティビティ", projects: "プロジェクト", writing: "記事", intro: "自己紹介", details: "基本情報", interests: "興味", featured: "注目", recent: "最近の活動", connect: "連絡先" },
+  }[locale];
+  const profileField = (key, value, tag = "span") => `<${tag} data-profile-field="${key}">${value}</${tag}>`;
+  const projectCards = projects.slice(0, 4).map((project, index) => `<a class="social-project-row" href="./projects/${project.slug}/">
+            <span class="social-project-number ${projectMediaClass(index)}">${String(index + 1).padStart(2, "0")}</span>
+            <span class="social-project-copy"><small>${escapeHtml(project.category)}</small><strong>${escapeHtml(project.title)}</strong><span>${escapeHtml(project.excerpt)}</span></span>
           </a>`).join("\n");
-  const focus = copy.focus.map(([label, text]) => `<div><strong>${label}</strong><span>${text}</span></div>`).join("");
-  const skills = copy.skills.map(([title, text]) => `<div class="skill-group"><h3>${title}</h3><p>${text}</p></div>`).join("");
+  const meta = copy.meta.map(([label, text], index) => `<div class="social-detail-row"><span class="social-detail-icon" aria-hidden="true">${["▣", "✈", "◎"][index]}</span><div>${profileField(`metaLabel${index}`, label, "small")}${profileField(`metaValue${index}`, text, "strong")}</div></div>`).join("");
+  const focus = copy.focus.map(([label, text], index) => `<div class="social-focus-row">${profileField(`focusLabel${index}`, label, "strong")}${profileField(`focusValue${index}`, text)}</div>`).join("");
+  const interestSnapshot = copy.interestSnapshot.map(([title, text], index) => `<div class="social-interest-item">${profileField(`interestLabel${index}`, title, "strong")}${profileField(`interestValue${index}`, text)}</div>`).join("");
+  const skills = copy.skills.map(([title, text], index) => `<div class="social-skill-row">${profileField(`skillLabel${index}`, title, "strong")}${profileField(`skillValue${index}`, text)}</div>`).join("");
   const journeyRoutes = ["academic-journey", "projects/nupace-exchange-prep", "resume"];
-  const journey = copy.journeyLinks.map(([title, text], index) => `<a href="./${journeyRoutes[index]}/"><strong>${title}</strong><span>${text}</span></a>`).join("");
-  const interestSnapshot = copy.interestSnapshot.map(([title, text]) => `<div><strong>${title}</strong><span>${text}</span></div>`).join("");
+  const journey = copy.journeyLinks.map(([title, text], index) => `<a class="social-journey-row" href="./${journeyRoutes[index]}/"><span>${profileField(`journeyLabel${index}`, title, "strong")}${profileField(`journeyValue${index}`, text, "small")}</span><b aria-hidden="true">›</b></a>`).join("");
 
   return pageShell({
-    title: copy.title, description: copy.description, relativeRoot: "..", canonicalPath: `${prefix}/`, route: "/", locale,
-    content: `<div data-site-home data-locale="${locale}"><section class="hero" id="top" aria-labelledby="hero-title"><img class="hero-image" src="../assets/hero-workspace.png" alt="${copy.imageAlt}" /><div class="hero-overlay" aria-hidden="true"></div><div class="hero-content reveal"><p class="kicker" data-home-hero-kicker>${copy.kicker}</p><h1 id="hero-title" data-home-hero-name>${copy.heroName}</h1><p class="hero-lede" data-home-hero-intro>${copy.lede}</p><div class="hero-actions"><a class="button button-primary" href="#work">${copy.viewProjects}</a><a class="button button-ghost" href="./resume/">${copy.viewResume}</a><a class="button button-ghost" href="#contact">${copy.contact}</a></div><dl class="hero-meta">${copy.meta.map(([term, detail]) => `<div><dt>${term}</dt><dd>${detail}</dd></div>`).join("")}</dl></div></section>
-      <section class="current-focus"><div class="section-inner reveal"><div class="focus-heading"><div><p class="kicker">${copy.currentKicker}</p><h2>${copy.focusTitle}</h2></div><p class="updated-date">${copy.updated}</p></div><div class="focus-grid">${focus}</div><a class="text-link" href="./now/">${copy.nowLink}</a></div></section>
-      <section class="section" id="about"><div class="section-inner split-layout"><div class="section-heading reveal"><p class="kicker">${copy.aboutKicker}</p><h2 data-home-about-title>${copy.aboutTitle}</h2></div><div class="body-copy reveal" data-home-about-paragraphs>${copy.about.map((text) => `<p>${text}</p>`).join("")}<div class="interest-preview">${interestSnapshot}</div><a class="interest-link" href="./interests/">${copy.interestLink}</a></div></div></section>
-      <section class="section section-muted" id="work"><div class="section-inner"><div class="section-heading narrow reveal"><p class="kicker">${copy.projectsKicker}</p><h2>${copy.projectsTitle}</h2><p class="section-note">${copy.projectsNote}</p></div><div class="project-grid project-grid-featured" data-firestore-project-featured data-locale="${locale}">${projectCards}</div><a class="text-link dark-link" href="./projects/">${copy.allProjects}</a></div></section>
-      <section class="section"><div class="section-inner split-layout"><div class="section-heading reveal"><p class="kicker">${copy.skillsKicker}</p><h2>${copy.skillsTitle}</h2></div><div class="skills-panel reveal">${skills}</div></div></section>
-      <section class="section journey-preview"><div class="section-inner split-layout"><div class="section-heading reveal"><p class="kicker">${copy.journeyKicker}</p><h2>${copy.journeyTitle}</h2></div><div class="preview-links reveal">${journey}</div></div></section>
-      <section class="section section-muted"><div class="section-inner"><div class="section-heading narrow reveal"><p class="kicker">${copy.writingKicker}</p><h2>${copy.writingTitle}</h2><p class="section-note">${copy.writingNote}</p></div><div class="post-preview-grid" data-latest-posts><p class="post-loading">${copy.loading}</p></div><a class="text-link dark-link" href="./blog/">${copy.allWriting}</a></div></section>
-      <section class="contact-section" id="contact"><div class="section-inner contact-layout reveal"><div><p class="kicker">${copy.contactKicker}</p><h2 data-home-contact-title>${copy.contactTitle}</h2><p class="contact-note" data-home-contact-note>${copy.contactNote}</p></div><div class="contact-actions"><a class="button button-primary" href="mailto:samhsiao0926@gmail.com" data-home-contact-email>Email</a><a class="button button-secondary" href="https://github.com/Samuelsheshine" target="_blank" rel="noreferrer">GitHub</a><a class="button button-secondary" href="https://www.linkedin.com/in/shih-hsiang-hsiao-652182324/" target="_blank" rel="noreferrer">LinkedIn</a></div></div></section></div>`,
-    extraScripts: firebaseHomeScripts(".."),
+    title: copy.title, description: copy.description, relativeRoot, canonicalPath: `${prefix}/`, route: "/", locale, bodyClass: "social-home",
+    content: `<div class="social-profile" data-site-home data-locale="${locale}">
+      <section class="social-profile-shell" id="top" aria-labelledby="hero-title">
+        <div class="social-cover"><img src="${relativeRoot}/assets/hero-workspace.png" alt="${copy.imageAlt}" /></div>
+        <div class="social-profile-head">
+          <div class="social-avatar" aria-hidden="true">SH</div>
+          <div class="social-profile-copy"><p data-home-hero-kicker>${copy.kicker}</p><h1 id="hero-title" data-home-hero-name>${copy.heroName}</h1><p data-home-hero-intro>${copy.lede}</p></div>
+          <div class="social-profile-actions"><a class="button button-primary" href="#work" data-profile-field="viewProjects">${copy.viewProjects}</a><a class="button button-secondary" href="./resume/" data-profile-field="viewResume">${copy.viewResume}</a></div>
+        </div>
+        <nav class="social-profile-tabs" aria-label="Profile"><a href="#feed" data-profile-field="tabOverview">${ui.overview}</a><a href="#about" data-profile-field="tabAbout">${ui.about}</a><a href="#feed" data-profile-field="tabActivity">${ui.activity}</a><a href="#work" data-profile-field="tabProjects">${ui.projects}</a><a href="#writing" data-profile-field="tabWriting">${ui.writing}</a></nav>
+      </section>
+
+      <div class="social-page-grid">
+        <aside class="social-sidebar">
+          <section class="social-card" id="about"><div class="social-card-header">${profileField("introHeading", ui.intro, "h2")}</div><div class="social-card-body"><h3 data-home-about-title>${copy.aboutTitle}</h3><div class="social-about-copy" data-home-about-paragraphs>${copy.about.map((text) => `<p>${text}</p>`).join("")}</div></div></section>
+          <section class="social-card"><div class="social-card-header">${profileField("detailsHeading", ui.details, "h2")}</div><div class="social-card-body social-details">${meta}</div></section>
+          <section class="social-card"><div class="social-card-header">${profileField("interestsHeading", ui.interests, "h2")}<a href="./interests/" data-profile-field="interestLink">${copy.interestLink}</a></div><div class="social-interest-grid">${interestSnapshot}</div></section>
+          <section class="social-card" id="contact"><div class="social-card-header">${profileField("connectHeading", ui.connect, "h2")}</div><div class="social-card-body"><h3 data-home-contact-title>${copy.contactTitle}</h3><p data-home-contact-note>${copy.contactNote}</p><div class="social-contact-links"><a href="mailto:samhsiao0926@gmail.com" data-home-contact-email>samhsiao0926@gmail.com</a><a href="https://github.com/Samuelsheshine" target="_blank" rel="noreferrer">GitHub</a><a href="https://www.linkedin.com/in/shih-hsiang-hsiao-652182324/" target="_blank" rel="noreferrer">LinkedIn</a></div></div></section>
+        </aside>
+
+        <section class="social-feed" id="feed">
+          <header class="social-feed-heading"><div class="social-avatar social-avatar-small">SH</div><div>${profileField("recentHeading", ui.recent, "p")}<h2 data-home-hero-name>${copy.heroName}</h2></div></header>
+          <article class="social-card social-feed-card"><div class="social-feed-author"><span class="social-avatar social-avatar-mini">SH</span><div><strong data-home-hero-name>${copy.heroName}</strong>${profileField("focusUpdated", copy.updated, "small")}</div></div><div class="social-feed-copy">${profileField("focusKicker", copy.currentKicker, "small")}${profileField("focusTitle", copy.focusTitle, "h2")}</div><div class="social-focus-list">${focus}</div><a class="social-card-action" href="./now/" data-profile-field="nowLink">${copy.nowLink}</a></article>
+          <article class="social-card social-feed-card" id="work"><div class="social-card-header"><div>${profileField("projectsKicker", copy.projectsKicker, "small")}${profileField("projectsTitle", copy.projectsTitle, "h2")}</div><a href="./projects/" data-profile-field="allProjects">${copy.allProjects}</a></div><p class="social-card-note" data-profile-field="projectsNote">${copy.projectsNote}</p><div class="social-project-list" data-firestore-project-featured data-locale="${locale}">${projectCards}</div></article>
+          <article class="social-card social-feed-card"><div class="social-card-header"><div>${profileField("skillsKicker", copy.skillsKicker, "small")}${profileField("skillsTitle", copy.skillsTitle, "h2")}</div></div><div class="social-skill-list">${skills}</div></article>
+          <article class="social-card social-feed-card"><div class="social-card-header"><div>${profileField("journeyKicker", copy.journeyKicker, "small")}${profileField("journeyTitle", copy.journeyTitle, "h2")}</div></div><div class="social-journey-list">${journey}</div></article>
+          <article class="social-card social-feed-card" id="writing"><div class="social-card-header"><div>${profileField("writingKicker", copy.writingKicker, "small")}${profileField("writingTitle", copy.writingTitle, "h2")}</div><a href="./blog/" data-profile-field="allWriting">${copy.allWriting}</a></div><p class="social-card-note" data-profile-field="writingNote">${copy.writingNote}</p><div class="post-preview-grid" data-latest-posts><p class="post-loading">${copy.loading}</p></div></article>
+        </section>
+      </div>
+    </div>`,
+    extraScripts: firebaseHomeScripts(relativeRoot),
   });
 }
 
@@ -969,6 +1021,8 @@ async function build() {
   const posts = readPosts();
   const projects = readProjects();
   const pages = readPages();
+
+  fs.writeFileSync(path.join(distDir, "index.html"), renderLocalizedHome("zh", projects));
 
   fs.writeFileSync(path.join(blogOutputDir, "index.html"), renderBlogIndex(posts));
   const firebasePostOutputDir = path.join(blogOutputDir, "post");

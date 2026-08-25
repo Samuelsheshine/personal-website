@@ -29,6 +29,12 @@ test("Firestore rules expose editable site content with admin-only writes", () =
   assert.match(firestoreRules, /allow create, update: if isAdmin\(\)/);
 });
 
+test("Firestore rules expose profile content with public reads and admin-only writes", () => {
+  assert.match(firestoreRules, /match \/profileContent\/\{locale\}/);
+  assert.match(firestoreRules, /hasValidProfileContentShape\(locale, request\.resource\.data\)/);
+  assert.match(firestoreRules, /data\.fields is map/);
+});
+
 test("Firestore rules expose only published projects to the public", () => {
   assert.match(firestoreRules, /match \/projects\/\{projectId\}/);
   assert.match(firestoreRules, /resource\.data\.published == true/);

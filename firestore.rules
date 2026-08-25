@@ -151,6 +151,16 @@ service cloud.firestore {
         && (paragraphs.size() < 10 || (paragraphs[9] is string && paragraphs[9].size() > 0));
     }
 
+    function hasValidProfileContentShape(locale, data) {
+      return locale in ["zh", "en", "ja"]
+        && data.keys().hasAll(["locale", "fields", "updatedAt"])
+        && data.keys().hasOnly(["locale", "fields", "updatedAt"])
+        && data.locale == locale
+        && data.fields is map
+    && data.fields.size() <= 100
+        && data.updatedAt is timestamp;
+    }
+
     function hasValidProjectShape(projectId, data) {
       return data.keys().hasAll([
           "locale",
@@ -246,6 +256,16 @@ service cloud.firestore {
 
       allow create, update: if isAdmin()
         && hasValidSiteContentShape(locale, request.resource.data)
+        && request.resource.data.updatedAt == request.time;
+
+      allow delete: if isAdmin();
+    }
+
+    match /profileContent/{locale} {
+      allow read: if locale in ["zh", "en", "ja"];
+
+      allow create, update: if isAdmin()
+        && hasValidProfileContentShape(locale, request.resource.data)
         && request.resource.data.updatedAt == request.time;
 
       allow delete: if isAdmin();

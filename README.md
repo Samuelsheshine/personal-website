@@ -1,6 +1,6 @@
 # Sam Hsiao Personal Website
 
-這是一個可部署到 GitHub Pages 或 Firebase Hosting 的工程作品集，包含 Markdown 貼文、專案 case studies、Now、Academic Journey 與 Resume。網站維持原生 HTML、CSS、JavaScript 與自製靜態建置器，另外使用 Firebase Authentication、Cloud Firestore 與 Firebase Storage 提供登入後的內容管理功能。
+這是一個可部署到 GitHub Pages 或 Firebase Hosting 的個人社群式作品集。首頁採用「封面＋個人檔案＋簡介卡＋活動動態牆」資訊架構，Projects 與 Blog 以動態卡片呈現；登入後直接在訪客看到的同一版面編輯文字。網站維持原生 HTML、CSS、JavaScript 與自製靜態建置器，另外使用 Firebase Authentication、Cloud Firestore 與 Firebase Storage 提供內容管理功能。
 
 ## 誰可以管理內容
 
@@ -14,14 +14,14 @@
 - `scripts/build-posts.js` 繼續產生三語靜態頁、manifest、sitemap 與 404 頁。
 - esbuild 只負責打包 Firebase Web SDK 與管理／公開貼文 JavaScript，不改變既有 UI 架構。
 - Firebase Authentication：Google 登入與 Auth User 狀態。
-- Cloud Firestore：`posts/{postId}` 儲存貼文；`postSlugs/{slug}` 在 transaction 中保證 slug 唯一；`siteContent/{locale}` 儲存三語首頁文字；`projects/{locale--slug}` 儲存可編輯的三語 Projects。
+- Cloud Firestore：`posts/{postId}` 儲存貼文；`postSlugs/{slug}` 在 transaction 中保證 slug 唯一；`siteContent/{locale}` 儲存三語姓名、簡介與聯絡內容；`profileContent/{locale}` 儲存社群檔案與動態牆欄位；`projects/{locale--slug}` 儲存可編輯的三語 Projects。
 - Firebase Storage：`posts/{postId}/{uuid}.{ext}` 儲存封面圖片，單檔上限 5 MB。
 - GitHub Pages：目前既有部署方式；`404.html` 會處理 `/blog/{slug}/` 與 `/projects/{slug}/` 動態網址。
 - Firebase Hosting：可選部署方式，`firebase.json` 已提供乾淨網址 rewrite。
 
 ## 修改內容
 
-- `index.html`：改姓名、標語、作品、能力、Email。
+- `scripts/build-posts.js`：產生三語社群式首頁、靜態內容頁、貼文與專案頁。
 - `styles.css`：調整顏色、版面與響應式樣式。
 - `assets/hero-workspace.png`：首頁主視覺圖。
 - `content/posts/`：新增或修改貼文。
@@ -29,11 +29,10 @@
 - `content/pages/`：修改 Now、Academic Journey 與 Resume 等固定內容頁。
 - `content/en/`：英文版的 pages、projects 與 posts。
 - `content/ja/`：日文版的 pages、projects 與 posts。
-- `scripts/build-posts.js`：把 Markdown 貼文與專案轉成網站頁面。
 - `.github/workflows/pages.yml`：推到 GitHub 後自動部署到 GitHub Pages。
 - `admin/`：Google 登入、Blog／首頁文字／Projects 管理、Markdown editor 與圖片上傳 UI。
 - `src/`：Firebase 管理端／公開端程式、slug 與安全 Markdown renderer。
-- `firestore.rules`：公開文章、首頁文字、已發布 Projects 的讀取規則，以及管理員寫入規則。
+- `firestore.rules`：公開文章、首頁／個人檔案文字、已發布 Projects 的讀取規則，以及管理員寫入規則。
 - `storage.rules`：已發布文章圖片讀取與管理員圖片操作規則。
 - `firestore.indexes.json`：發布文章與三語 Projects 列表需要的複合索引。
 - `firebase.json`：Rules、indexes、emulators 與 Firebase Hosting 設定。
@@ -125,13 +124,13 @@ projects
 ## 使用管理後台修改首頁與 Projects
 
 1. 開啟 `/admin/`；管理員登入後看到的就是公開首頁本身，而不是首頁文字表單。
-2. 有虛線框的 Hero、About 與 Contact 文字可直接點擊修改，版面、區塊與元件位置不能拖動或刪除；所有文字都可以留白。
+2. 有虛線框的個人檔案、簡介、基本資料、興趣、目前重點、能力、學習歷程預覽、按鈕標籤與 Contact 文字可直接點擊修改；版面、區塊與元件位置不能拖動或刪除，所有文字都可以留白。
 3. 使用原本的語言選單決定中文、英文或日文原文，按底部工具列的「儲存並同步三種語言」。Chrome 138+ 內建 Translator API 會在瀏覽器本機翻譯，並以同一個 Firestore batch 更新三種語言；任何一步失敗時三種語言都不會寫入。
 4. 工具列的「還原」會回到上次儲存內容；「離開編輯」會回到一般訪客首頁。尚未儲存就離開時會顯示確認。
 5. 按「管理 Blog／Projects」可進入內容列表，依語言新增、編輯、排序、發布、改為草稿或刪除 Project；內容使用 Markdown。
 6. 首次翻譯可能需要由 Chrome 下載語言模型。儲存後資料直接進入 Firestore，公開頁重新整理即可顯示，不需要另外 commit GitHub；翻譯完成後仍建議檢查姓名與工程專有名詞。靜態 HTML 會保留原內容作為 Firebase 暫時無法連線時的備援。
 
-首頁的「目前重點」、能力、學習歷程預覽與固定內容頁目前仍由 repository 的 `index.html`、`scripts/build-posts.js` 與 `content/pages/` 管理，尚未放進 Firestore 後台。
+Projects 與 Blog 的卡片內容及點入後的詳細頁由管理後台管理。Now、Academic Journey、Resume 與 Interests 等既有固定 Markdown 頁仍保留在 repository；若要更動這些頁的結構或長篇內容，修改對應的 `content/{locale}/pages/*.md` 後部署即可。
 
 ## 新增靜態 Markdown 貼文（既有流程）
 

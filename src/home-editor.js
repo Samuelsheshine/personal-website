@@ -12,6 +12,7 @@ import {
   writeBatch,
 } from "firebase/firestore";
 import { getClientConfig, getFirebaseApp, hasFirebaseConfig } from "./firebase-core";
+import { applyProfileFields, collectProfileFields, validateProfileFields } from "./profile-content";
 
 const SITE_LOCALES = ["zh", "en", "ja"];
 const TRANSLATOR_LANGUAGE_CODES = { zh: "zh-Hant", en: "en", ja: "ja" };
@@ -22,6 +23,7 @@ const isEditMode = new URLSearchParams(window.location.search).get("edit") === "
 let db;
 let currentLocale;
 let initialContent;
+let initialProfileFields;
 let isDirty = false;
 let isSaving = false;
 let toolbarElements;
@@ -101,6 +103,9 @@ function activateEditableFields() {
   siteHome.querySelectorAll("[data-home-about-paragraphs] > p").forEach((paragraph, index) => {
     markEditable(paragraph, `About 段落 ${index + 1}`);
   });
+  siteHome.querySelectorAll("[data-profile-field]").forEach((element) => {
+    markEditable(element, "個人檔案文字");
+  });
 }
 
 function ensureAboutEditorParagraph() {
@@ -120,8 +125,10 @@ function applyContent(content) {
     "[data-home-contact-note]": content.contactNote,
   };
   Object.entries(bindings).forEach(([selector, value]) => {
-    const element = siteHome.querySelector(selector);
-    if (element && typeof value === "string") element.textContent = value;
+    if (typeof value !== "string") return;
+    siteHome.querySelectorAll(selector).forEach((element) => {
+      element.textContent = value;
+    });
   });
 
   const about = siteHome.querySelector("[data-home-about-paragraphs]");
@@ -185,7 +192,7 @@ function validateContent(content) {
   }
 }
 
-function hasTranslatableText(content) {
+function hasTranslatableText(content, profileFields) {
   return [
     content.heroKicker,
     content.heroName,
@@ -194,6 +201,7 @@ function hasTranslatableText(content) {
     ...content.aboutParagraphs,
     content.contactTitle,
     content.contactNote,
+    ...Object.values(profileFields),
   ].some(Boolean);
 }
 
@@ -243,10 +251,29 @@ async function translateContent(sourceContent, targetLocale, translator) {
   return translated;
 }
 
-async function translateAllContent(sourceContent) {
+function emptyTranslatedProfileFields(sourceFields) {
+  return Object.fromEntries(Object.keys(sourceFields).map((key) => [key, ""]));
+}
+
+async function translateProfileFields(sourceFields, translator) {
+  const entries = Object.entries(sourceFields);
+  const translatedValues = await Promise.all(entries.map(([, value]) => translateText(translator, value)));
+  const translated = Object.fromEntries(entries.map(([key], index) => [key, translatedValues[index]]));
+  validateProfileFields(translated);
+  return translated;
+}
+
+async function translateAllContent(sourceContent, sourceProfileFields) {
   const targetLocales = SITE_LOCALES.filter((locale) => locale !== sourceContent.locale);
-  if (!hasTranslatableText(sourceContent)) {
-    return [sourceContent, ...targetLocales.map((locale) => emptyTranslatedContent(sourceContent, locale))];
+  if (!hasTranslatableText(sourceContent, sourceProfileFields)) {
+    return [
+      { locale: sourceContent.locale, siteContent: sourceContent, profileFields: sourceProfileFields },
+      ...targetLocales.map((locale) => ({
+        locale,
+        siteContent: emptyTranslatedContent(sourceContent, locale),
+        profileFields: emptyTranslatedProfileFields(sourceProfileFields),
+      })),
+    ];
   }
 
   const TranslatorApi = globalThis.Translator;
@@ -274,9 +301,17 @@ async function translateAllContent(sourceContent) {
   try {
     const failure = results.find((result) => result.status === "rejected");
     if (failure) throw failure.reason;
-    const translated = await Promise.all(jobs.map(({ targetLocale }, index) =>
-      translateContent(sourceContent, targetLocale, translators[index])));
-    return [sourceContent, ...translated];
+    const translated = await Promise.all(jobs.map(async ({ targetLocale }, index) => {
+      const [siteContent, profileFields] = await Promise.all([
+        translateContent(sourceContent, targetLocale, translators[index]),
+        translateProfileFields(sourceProfileFields, translators[index]),
+      ]);
+      return { locale: targetLocale, siteContent, profileFields };
+    }));
+    return [
+      { locale: sourceContent.locale, siteContent: sourceContent, profileFields: sourceProfileFields },
+      ...translated,
+    ];
   } finally {
     translators.forEach((translator) => translator.destroy?.());
   }
@@ -292,12 +327,15 @@ function setDirty(dirty) {
 async function saveContent() {
   if (!isDirty || isSaving) return;
   let sourceContent;
+  let sourceProfileFields;
   let translationPromise;
   try {
     sourceContent = collectContent();
+    sourceProfileFields = collectProfileFields(siteHome);
     validateContent(sourceContent);
+    validateProfileFields(sourceProfileFields);
     // Translator.create() must start directly from the user's click to retain browser user activation.
-    translationPromise = translateAllContent(sourceContent);
+    translationPromise = translateAllContent(sourceContent, sourceProfileFields);
   } catch (error) {
     setStatus(error.message || "內容格式不正確。", "error");
     return;
@@ -311,15 +349,21 @@ async function saveContent() {
   try {
     const localizedContents = await translationPromise;
     const batch = writeBatch(db);
-    localizedContents.forEach((content) => {
-      batch.set(doc(db, "siteContent", content.locale), {
-        ...content,
+    localizedContents.forEach(({ locale, siteContent, profileFields }) => {
+      batch.set(doc(db, "siteContent", locale), {
+        ...siteContent,
+        updatedAt: serverTimestamp(),
+      });
+      batch.set(doc(db, "profileContent", locale), {
+        locale,
+        fields: profileFields,
         updatedAt: serverTimestamp(),
       });
     });
     toolbarElements.save.textContent = "儲存中…";
     await batch.commit();
     initialContent = structuredClone(sourceContent);
+    initialProfileFields = structuredClone(sourceProfileFields);
     setDirty(false);
     setStatus("三種語言已同步完成；訪客重新整理後就會看到。", "success");
   } catch (error) {
@@ -336,6 +380,8 @@ async function saveContent() {
 function resetContent() {
   if (!isDirty || isSaving) return;
   applyContent(initialContent);
+  applyProfileFields(siteHome, initialProfileFields);
+  activateEditableFields();
   setDirty(false);
   setStatus("已還原成上次儲存的內容。", "info");
 }
@@ -351,7 +397,7 @@ function registerEditorEvents() {
     if (event.key === "Enter" && event.target.closest("[data-home-editable]")) event.preventDefault();
   });
   siteHome.addEventListener("click", (event) => {
-    if (event.target.closest("[data-home-contact-email]")) event.preventDefault();
+    if (event.target.closest("a[data-home-editable]")) event.preventDefault();
   });
   toolbarElements.save.addEventListener("click", saveContent);
   toolbarElements.reset.addEventListener("click", resetContent);
@@ -401,7 +447,7 @@ async function initializeEditor() {
 
   document.body.classList.add("is-home-editing");
   let isUsingFallback = false;
-  await window.__SITE_CONTENT_LOAD_PROMISE__;
+  await window.__PROFILE_CONTENT_LOAD_PROMISE__;
   try {
     const snapshot = await getDoc(doc(db, "siteContent", currentLocale));
     if (snapshot.exists()) applyContent(snapshot.data());
@@ -412,6 +458,7 @@ async function initializeEditor() {
   ensureAboutEditorParagraph();
   activateEditableFields();
   initialContent = structuredClone(collectContent());
+  initialProfileFields = structuredClone(collectProfileFields(siteHome));
   toolbarElements.save.disabled = true;
   toolbarElements.reset.disabled = true;
   registerEditorEvents();

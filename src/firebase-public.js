@@ -11,6 +11,7 @@ import {
 } from "firebase/firestore";
 import { getFirebaseApp, hasFirebaseConfig } from "./firebase-core";
 import { estimateReadingTime, renderMarkdown } from "./markdown";
+import { applyProfileFields } from "./profile-content";
 import { slugify } from "./slug";
 
 const latestContainer = document.querySelector("[data-latest-posts]");
@@ -263,8 +264,10 @@ function applySiteContent(content) {
   };
 
   Object.entries(bindings).forEach(([selector, value]) => {
-    const element = siteHome.querySelector(selector);
-    if (element && typeof value === "string") element.textContent = value;
+    if (typeof value !== "string") return;
+    siteHome.querySelectorAll(selector).forEach((element) => {
+      element.textContent = value;
+    });
   });
 
   const about = siteHome.querySelector("[data-home-about-paragraphs]");
@@ -300,6 +303,18 @@ async function loadSiteContent() {
     if (snapshot.exists()) applySiteContent(snapshot.data());
   } catch {
     // The static HTML remains a complete, readable fallback when Firestore is unavailable.
+  }
+}
+
+async function loadProfileContent() {
+  if (!siteHome || !hasFirebaseConfig()) return;
+  try {
+    const db = getFirestore(getFirebaseApp());
+    const locale = currentLocale(siteHome);
+    const snapshot = await getDoc(doc(db, "profileContent", locale));
+    if (snapshot.exists()) applyProfileFields(siteHome, snapshot.data().fields);
+  } catch {
+    // The checked-in profile cards remain visible when Firestore is unavailable.
   }
 }
 
@@ -446,5 +461,6 @@ async function loadProjectArticle() {
 loadPublishedPosts();
 loadArticle();
 window.__SITE_CONTENT_LOAD_PROMISE__ = loadSiteContent();
+window.__PROFILE_CONTENT_LOAD_PROMISE__ = window.__SITE_CONTENT_LOAD_PROMISE__.then(loadProfileContent);
 loadPublishedProjects();
 loadProjectArticle();
