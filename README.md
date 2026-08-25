@@ -116,19 +116,20 @@ projects
 
 ## 使用管理後台新增動態貼文
 
-1. 開啟 `/admin/` 並用指定的 Google 帳號登入。
-2. 選擇「新增貼文」，輸入 title、slug、excerpt、Markdown content、tags 與 status。
+1. 開啟 `/admin/` 並用指定的 Google 帳號登入；成功後會先進入首頁視覺化編輯模式。
+2. 按底部工具列的「管理 Blog／Projects」，再選擇「新增貼文」，輸入 title、slug、excerpt、Markdown content、tags 與 status。
 3. 封面圖片會先上傳到 Storage，儲存貼文後 download URL 與 object path 會寫入 Firestore。
 4. 草稿只有管理員能讀取；改為「發布」後才會出現在 `/blog/` 與首頁最新文章。
 5. 刪除前會再次確認，確認後會交易式刪除貼文與 slug 保留資料，再清理 Storage 圖片。
 
 ## 使用管理後台修改首頁與 Projects
 
-1. 開啟 `/admin/`，登入後切換到「首頁文字」。
-2. 第一次使用時按「首次匯入目前靜態內容」；這會建立三語首頁與現有 12 筆三語 Projects，不會覆寫已存在的 Firestore 文件。
-3. 首頁文字可選擇中文、英文或日文作為原文，修改 Hero 小標題／姓名／介紹、About 標題／段落，以及 Contact 標題／說明／Email。儲存時會使用桌面版 Chrome 138+ 內建的 Translator API，在瀏覽器本機翻譯並以同一個 Firestore batch 更新三種語言；任何一種翻譯失敗時三種語言都不會寫入。
-4. 切換到「Projects」可依語言新增、編輯、排序、發布、改為草稿或刪除 Project；內容使用 Markdown。
-5. 首次翻譯可能需要由 Chrome 下載語言模型。儲存後資料直接進入 Firestore，公開頁重新整理即可顯示，不需要另外 commit GitHub；翻譯完成後仍建議檢查姓名與工程專有名詞。靜態 HTML 會保留原內容作為 Firebase 暫時無法連線時的備援。
+1. 開啟 `/admin/`；管理員登入後看到的就是公開首頁本身，而不是首頁文字表單。
+2. 有虛線框的 Hero、About 與 Contact 文字可直接點擊修改，版面、區塊與元件位置不能拖動或刪除；所有文字都可以留白。
+3. 使用原本的語言選單決定中文、英文或日文原文，按底部工具列的「儲存並同步三種語言」。Chrome 138+ 內建 Translator API 會在瀏覽器本機翻譯，並以同一個 Firestore batch 更新三種語言；任何一步失敗時三種語言都不會寫入。
+4. 工具列的「還原」會回到上次儲存內容；「離開編輯」會回到一般訪客首頁。尚未儲存就離開時會顯示確認。
+5. 按「管理 Blog／Projects」可進入內容列表，依語言新增、編輯、排序、發布、改為草稿或刪除 Project；內容使用 Markdown。
+6. 首次翻譯可能需要由 Chrome 下載語言模型。儲存後資料直接進入 Firestore，公開頁重新整理即可顯示，不需要另外 commit GitHub；翻譯完成後仍建議檢查姓名與工程專有名詞。靜態 HTML 會保留原內容作為 Firebase 暫時無法連線時的備援。
 
 首頁的「目前重點」、能力、學習歷程預覽與固定內容頁目前仍由 repository 的 `index.html`、`scripts/build-posts.js` 與 `content/pages/` 管理，尚未放進 Firestore 後台。
 

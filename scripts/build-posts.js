@@ -557,6 +557,10 @@ function firebasePublicScripts(relativeRoot) {
   return `<script src="${relativeRoot}/firebase-config.js"></script>\n    <script type="module" src="${relativeRoot}/client/firebase-public.js"></script>`;
 }
 
+function firebaseHomeScripts(relativeRoot) {
+  return `${firebasePublicScripts(relativeRoot)}\n    <script type="module" src="${relativeRoot}/client/home-editor.js"></script>`;
+}
+
 function githubPagesBlogRedirect() {
   return `<script>
     (() => {
@@ -897,7 +901,7 @@ function renderLocalizedHome(locale, projects) {
       <section class="section journey-preview"><div class="section-inner split-layout"><div class="section-heading reveal"><p class="kicker">${copy.journeyKicker}</p><h2>${copy.journeyTitle}</h2></div><div class="preview-links reveal">${journey}</div></div></section>
       <section class="section section-muted"><div class="section-inner"><div class="section-heading narrow reveal"><p class="kicker">${copy.writingKicker}</p><h2>${copy.writingTitle}</h2><p class="section-note">${copy.writingNote}</p></div><div class="post-preview-grid" data-latest-posts><p class="post-loading">${copy.loading}</p></div><a class="text-link dark-link" href="./blog/">${copy.allWriting}</a></div></section>
       <section class="contact-section" id="contact"><div class="section-inner contact-layout reveal"><div><p class="kicker">${copy.contactKicker}</p><h2 data-home-contact-title>${copy.contactTitle}</h2><p class="contact-note" data-home-contact-note>${copy.contactNote}</p></div><div class="contact-actions"><a class="button button-primary" href="mailto:samhsiao0926@gmail.com" data-home-contact-email>Email</a><a class="button button-secondary" href="https://github.com/Samuelsheshine" target="_blank" rel="noreferrer">GitHub</a><a class="button button-secondary" href="https://www.linkedin.com/in/shih-hsiang-hsiao-652182324/" target="_blank" rel="noreferrer">LinkedIn</a></div></div></section></div>`,
-    extraScripts: firebasePublicScripts(".."),
+    extraScripts: firebaseHomeScripts(".."),
   });
 }
 

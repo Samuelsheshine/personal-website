@@ -102,7 +102,7 @@
 
         <nav class="admin-content-tabs" aria-label="內容類型">
           <button class="admin-content-tab is-active" type="button" data-admin-tab="posts">Blog 貼文</button>
-          <button class="admin-content-tab" type="button" data-admin-tab="site">首頁文字</button>
+          <a class="admin-content-tab" href="../?edit=home">視覺化編輯首頁</a>
           <button class="admin-content-tab" type="button" data-admin-tab="projects">Projects</button>
         </nav>
 
@@ -258,7 +258,7 @@
             </select>
           </label>
           <div class="admin-loading" data-project-list-loading hidden><span class="loading-spinner" aria-hidden="true"></span><p>正在載入 Projects…</p></div>
-          <div class="admin-empty" data-empty-projects hidden><p class="kicker">Empty</p><h3>這個語言目前沒有 Project</h3><p>可以新增一個，或先使用首頁文字頁的匯入按鈕載入原本靜態內容。</p></div>
+          <div class="admin-empty" data-empty-projects hidden><p class="kicker">Empty</p><h3>這個語言目前沒有 Project</h3><p>可以直接新增第一個 Project。</p></div>
           <div class="admin-post-list" data-admin-project-list></div>
         </section>
 

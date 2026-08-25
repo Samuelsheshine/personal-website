@@ -445,6 +445,6 @@ async function loadProjectArticle() {
 
 loadPublishedPosts();
 loadArticle();
-loadSiteContent();
+window.__SITE_CONTENT_LOAD_PROMISE__ = loadSiteContent();
 loadPublishedProjects();
 loadProjectArticle();

@@ -1046,6 +1046,11 @@ function showAuthState(user) {
     return;
   }
 
+  if (new URLSearchParams(window.location.search).get("manage") !== "content") {
+    window.location.replace("../?edit=home");
+    return;
+  }
+
   elements.userName.textContent = user.displayName || user.email || "管理員";
   setVisible(elements.dashboard, true);
   switchAdminSection(activeSection);

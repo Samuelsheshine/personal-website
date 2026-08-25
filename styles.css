@@ -1263,6 +1263,125 @@ h3 {
   transform: translateY(0);
 }
 
+.home-editor-toolbar {
+  position: fixed;
+  right: 1rem;
+  bottom: 1rem;
+  left: 1rem;
+  z-index: 1000;
+  width: min(1120px, calc(100% - 32px));
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: auto minmax(180px, 1fr) auto;
+  align-items: center;
+  gap: 1rem;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 12px;
+  background: rgba(23, 32, 38, 0.96);
+  color: #fff;
+  padding: 0.8rem 0.9rem;
+  box-shadow: 0 18px 50px rgba(23, 32, 38, 0.28);
+  backdrop-filter: blur(18px);
+}
+
+.home-editor-toolbar-copy {
+  display: grid;
+  gap: 0.1rem;
+}
+
+.home-editor-toolbar-copy strong {
+  font-size: 0.92rem;
+}
+
+.home-editor-toolbar-copy span,
+.home-editor-status {
+  color: rgba(255, 255, 255, 0.72);
+  font-size: 0.78rem;
+}
+
+.home-editor-status {
+  margin: 0;
+  text-align: center;
+}
+
+.home-editor-status[data-state="success"] {
+  color: #bdebd2;
+}
+
+.home-editor-status[data-state="pending"] {
+  color: #ffe2a8;
+}
+
+.home-editor-status[data-state="error"] {
+  color: #ffc2bd;
+}
+
+.home-editor-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.45rem;
+}
+
+.home-editor-toolbar .button {
+  min-height: 40px;
+  white-space: nowrap;
+  padding: 0.58rem 0.78rem;
+  font-size: 0.82rem;
+}
+
+.home-editor-toolbar .button-ghost {
+  border-color: rgba(255, 255, 255, 0.26);
+  color: #fff;
+}
+
+.is-home-editing [data-home-editable] {
+  min-width: 1.1em;
+  min-height: 1em;
+  border-radius: 4px;
+  outline: 2px dashed rgba(17, 109, 112, 0.58);
+  outline-offset: 5px;
+  cursor: text;
+  transition: outline-color 160ms ease, background-color 160ms ease;
+}
+
+.is-home-editing [data-home-editable]:hover {
+  outline-color: var(--teal);
+  background: rgba(255, 255, 255, 0.42);
+}
+
+.is-home-editing [data-home-editable]:focus {
+  outline: 3px solid var(--teal);
+  background: rgba(255, 255, 255, 0.72);
+}
+
+.is-home-editing [data-home-editable]:empty::before {
+  content: attr(data-editor-placeholder);
+  color: rgba(82, 96, 105, 0.62);
+  font-size: 0.72em;
+  font-style: italic;
+  font-weight: 500;
+  text-transform: none;
+}
+
+@media (max-width: 900px) {
+  .home-editor-toolbar {
+    grid-template-columns: 1fr;
+    gap: 0.6rem;
+    max-height: calc(100vh - 32px);
+    overflow-y: auto;
+  }
+
+  .home-editor-status {
+    text-align: left;
+  }
+
+  .home-editor-actions {
+    justify-content: flex-start;
+    flex-wrap: wrap;
+  }
+}
+
 .reveal {
   opacity: 0;
   transform: translateY(18px);

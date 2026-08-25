@@ -18,7 +18,11 @@ const localizedText = {
 languageSelect?.addEventListener("change", () => {
   const option = languageSelect.selectedOptions[0];
   window.localStorage.setItem("preferred-language", option.dataset.language);
-  window.location.assign(option.value);
+  const nextUrl = new URL(option.value, window.location.href);
+  if (new URLSearchParams(window.location.search).get("edit") === "home") {
+    nextUrl.searchParams.set("edit", "home");
+  }
+  window.location.assign(nextUrl);
 });
 
 try {
@@ -29,7 +33,13 @@ try {
 
   if (preferredLanguage && preferredLanguage !== currentLanguage) {
     const preferredOption = document.querySelector(`[data-language="${preferredLanguage}"]`);
-    if (preferredOption) window.location.replace(preferredOption.value);
+    if (preferredOption) {
+      const nextUrl = new URL(preferredOption.value, window.location.href);
+      if (new URLSearchParams(window.location.search).get("edit") === "home") {
+        nextUrl.searchParams.set("edit", "home");
+      }
+      window.location.replace(nextUrl);
+    }
   }
 } catch {
   // Language switching still works when storage is unavailable.

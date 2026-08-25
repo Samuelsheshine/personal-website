@@ -139,6 +139,7 @@
 
 .admin-content-tab {
   flex: 0 0 auto;
+  text-decoration: none;
   border: 1px solid transparent;
   border-radius: 999px;
   background: transparent;
