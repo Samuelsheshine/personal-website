@@ -1,10 +1,23 @@
 # Sam Hsiao Personal Website
 
-這是一個可直接部署到 GitHub Pages 的靜態工程作品集，包含 Markdown 貼文、專案 case studies、Now、Academic Journey 與 Resume。內容使用 HTML、CSS 與 JavaScript，不需要後端服務。
+這是一個可部署到 GitHub Pages 或 Firebase Hosting 的工程作品集，包含 Markdown 貼文、專案 case studies、Now、Academic Journey 與 Resume。網站維持原生 HTML、CSS、JavaScript 與自製靜態建置器，另外使用 Firebase Authentication、Cloud Firestore 與 Firebase Storage 提供登入後的貼文管理功能。
 
 ## 誰可以新增貼文
 
-貼文來源是 repository 裡的 `content/posts/*.md`。只有擁有這個 repository 寫入權限的人可以新增、修改或刪除貼文；一般訪客只能閱讀網站上已發布的內容。
+`/admin/` 使用 Google Sign-In。只有 `FIREBASE_ADMIN_UID` 指定的 Firebase Authentication UID 會顯示管理介面，而且 Firestore／Storage Security Rules 會再次驗證同一個 UID；前端隱藏按鈕不是權限邊界。一般訪客只能讀取 `status == "published"` 的 Firestore 貼文。
+
+原有 `content/posts/*.md` 仍會照原流程建置，既有文章不會消失。新管理後台建立的動態文章儲存在 Firestore，封面圖片儲存在 Storage。
+
+## 技術與資料架構
+
+- 原生 HTML／CSS／JavaScript，沒有 React、Vue、Next.js 或 CSS framework。
+- `scripts/build-posts.js` 繼續產生三語靜態頁、manifest、sitemap 與 404 頁。
+- esbuild 只負責打包 Firebase Web SDK 與管理／公開貼文 JavaScript，不改變既有 UI 架構。
+- Firebase Authentication：Google 登入與 Auth User 狀態。
+- Cloud Firestore：`posts/{postId}` 儲存貼文；`postSlugs/{slug}` 在 transaction 中保證 slug 唯一。
+- Firebase Storage：`posts/{postId}/{uuid}.{ext}` 儲存封面圖片，單檔上限 5 MB。
+- GitHub Pages：目前既有部署方式；`404.html` 會處理 `/blog/{slug}/` 動態文章網址。
+- Firebase Hosting：可選部署方式，`firebase.json` 已提供乾淨網址 rewrite。
 
 ## 修改內容
 
@@ -18,8 +31,93 @@
 - `content/ja/`：日文版的 pages、projects 與 posts。
 - `scripts/build-posts.js`：把 Markdown 貼文與專案轉成網站頁面。
 - `.github/workflows/pages.yml`：推到 GitHub 後自動部署到 GitHub Pages。
+- `admin/`：Google 登入、貼文列表、Markdown editor 與圖片上傳 UI。
+- `src/`：Firebase 管理端／公開端程式、slug 與安全 Markdown renderer。
+- `firestore.rules`：公開文章讀取與管理員寫入規則。
+- `storage.rules`：已發布文章圖片讀取與管理員圖片操作規則。
+- `firestore.indexes.json`：發布文章列表需要的複合索引。
+- `firebase.json`：Rules、indexes、emulators 與 Firebase Hosting 設定。
 
-## 新增貼文
+## Firebase 首次設定
+
+### 1. Firebase Console
+
+1. 建立或選擇 Firebase project，新增一個 Web App。
+2. 在 **Authentication > Sign-in method** 啟用 Google provider。
+3. 在 **Authentication > Settings > Authorized domains** 加入實際網站網域；本機測試時也加入 `localhost`。
+4. 建立預設的 Cloud Firestore database。
+5. 啟用 Firebase Storage。
+
+### 2. 本機環境變數
+
+安裝套件並建立本機設定：
+
+```powershell
+npm install
+Copy-Item .env.example .env.local
+```
+
+在 `.env.local` 填入 Firebase Console 顯示的 Web App 設定：
+
+```dotenv
+FIREBASE_API_KEY=
+FIREBASE_AUTH_DOMAIN=
+FIREBASE_PROJECT_ID=
+FIREBASE_STORAGE_BUCKET=
+FIREBASE_MESSAGING_SENDER_ID=
+FIREBASE_APP_ID=
+FIREBASE_ADMIN_UID=
+```
+
+這些是 Firebase Web App 的公開 client config，不是 service-account secret；仍然不要在前端或 Git 中加入 service-account JSON、private key 或 Admin SDK credential。
+
+### 3. 取得並同步管理員 UID
+
+如果還不知道 UID，可以先在網站使用 Google 登入，再到 Firebase Console 的
+**Authentication → Users** 複製該帳號的 User UID。未授權帳號的前端畫面不會顯示 UID。
+
+將 UID 填入 `.env.local`，再執行：
+
+```powershell
+npm run firebase:set-admin
+npm run build
+```
+
+`firebase:set-admin` 會把同一個 UID 同步到 `firestore.rules` 與 `storage.rules` 的 `ADMIN_UID` 標記。UID 本身不是私密憑證，而且 Security Rules 必須包含它才能在 Firebase 端授權；不要只設定瀏覽器環境變數而漏掉 Rules。
+
+### 4. 部署 Rules 與 index
+
+```powershell
+npx firebase login
+npm run firebase:deploy:rules
+```
+
+此 repository 的預設 Firebase 專案已在 `.firebaserc` 設為 `personalweb-8915`。
+
+Cloud Storage for Firebase 需要 Blaze 隨用隨付方案。首次部署 Storage Rules 前，需先在
+Firebase Console 升級方案、建立預設 bucket 並選擇儲存位置；未完成前仍可新增不含封面圖片的貼文。
+
+Storage Rules 第一次透過 `firestore.get()` 檢查文章發布狀態時，Firebase 可能要求啟用 Storage Rules 讀取 Firestore 的產品連線權限，依 Console 或 CLI 提示確認即可。
+
+公開文章列表的 query 是：
+
+```txt
+posts
+  where status == "published"
+  orderBy publishedAt desc
+```
+
+需要的 composite index 已寫在 `firestore.indexes.json`，隨 `firebase:deploy:rules` 一起部署。
+
+## 使用管理後台新增動態貼文
+
+1. 開啟 `/admin/` 並用指定的 Google 帳號登入。
+2. 選擇「新增貼文」，輸入 title、slug、excerpt、Markdown content、tags 與 status。
+3. 封面圖片會先上傳到 Storage，儲存貼文後 download URL 與 object path 會寫入 Firestore。
+4. 草稿只有管理員能讀取；改為「發布」後才會出現在 `/blog/` 與首頁最新文章。
+5. 刪除前會再次確認，確認後會交易式刪除貼文與 slug 保留資料，再清理 Storage 圖片。
+
+## 新增靜態 Markdown 貼文（既有流程）
 
 1. 到 GitHub repository 的 `content/posts` 資料夾。
 2. 點 `Add file` > `Create new file`。
@@ -124,21 +222,37 @@ description: 這個頁面的搜尋摘要。
 2. 把這個資料夾裡的檔案推到 repository 的 `main` branch。
 3. 到 repository 的 `Settings` > `Pages`。
 4. 在 `Build and deployment` 的 `Source` 選擇 `GitHub Actions`。
-5. 等待 `Actions` 跑完後，網站會出現在 GitHub Pages 提供的網址。
+5. 到 repository 的 **Settings > Secrets and variables > Actions > Variables**，建立 `.env.example` 中的七個同名變數。
+6. 等待 `Actions` 執行 `npm ci`、lint、tests 與 build；完成後網站會出現在 GitHub Pages 提供的網址。
+
+GitHub Pages 只部署網站檔案，不會自動部署 Firestore／Storage Rules；Rules 仍需先用 `npm run firebase:deploy:rules` 部署到 Firebase project。
+
+## 發布到 Firebase Hosting（可選）
+
+`firebase.json` 已將 `/blog/**` rewrite 到動態文章 renderer。先完成 Firebase CLI project 選擇，再執行：
+
+```powershell
+npm run check
+npm run firebase:deploy
+```
+
+這會部署 `dist/`、Firestore Rules、composite indexes 與 Storage Rules。若仍要沿用現有 GitHub Pages，只需使用上一節，不必改用 Firebase Hosting。
 
 ## 本機預覽
 
-先產生貼文與專案頁：
+安裝套件後啟動本機預覽：
 
-```bash
-node scripts/build-posts.js
+```powershell
+npm install
+npm run dev
 ```
 
-再用任一個靜態伺服器預覽：
+然後開啟 `http://localhost:4173`。內建預覽伺服器會處理 `/blog/{slug}/` 的動態 route；若測試 Google Sign-In，請在 Firebase Authorized domains 加入 `localhost`。
 
-```bash
-cd dist
-python -m http.server 4173
+完整檢查：
+
+```powershell
+npm run check
 ```
 
-然後開啟 `http://localhost:4173`。
+這會依序執行 ESLint、Node tests 與 production build。

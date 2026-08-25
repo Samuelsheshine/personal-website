@@ -1,6 +1,12 @@
 const fs = require("node:fs");
 const path = require("node:path");
 const crypto = require("node:crypto");
+const { buildClient } = require("./build-client");
+const {
+  hasCompleteFirebaseConfig,
+  loadLocalEnvironment,
+  writeFirebaseClientConfig,
+} = require("./env");
 
 const rootDir = path.resolve(__dirname, "..");
 const siteUrl = "https://samuelsheshine.github.io/personal-website";
@@ -11,8 +17,10 @@ const distDir = path.join(rootDir, "dist");
 const postsOutputDir = path.join(distDir, "posts");
 const blogOutputDir = path.join(distDir, "blog");
 const projectsOutputDir = path.join(distDir, "projects");
-const staticEntries = ["index.html", "styles.css", "script.js", "favicon.svg", ".nojekyll", "assets"];
+const staticEntries = ["index.html", "styles.css", "script.js", "favicon.svg", ".nojekyll", "assets", "admin"];
 const localePrefixes = { zh: "", en: "/en", ja: "/ja" };
+
+loadLocalEnvironment(rootDir);
 const localeUi = {
   zh: {
     displayName: "蕭士翔", languageLabel: "語言", languageNames: ["中文", "英文", "日文"], navigationLabel: "主要導覽", closeMenu: "關閉選單",
@@ -44,23 +52,23 @@ function ensureDir(dir) {
   fs.mkdirSync(dir, { recursive: true });
 }
 
-function emptyDir(dir) {
-  fs.rmSync(dir, { recursive: true, force: true });
-  ensureDir(dir);
+async function emptyDir(dir) {
+  await fs.promises.rm(dir, { recursive: true, force: true });
+  await fs.promises.mkdir(dir, { recursive: true });
 }
 
-function copyEntry(entry) {
+async function copyEntry(entry) {
   const from = path.join(rootDir, entry);
   const to = path.join(distDir, entry);
 
   if (!fs.existsSync(from)) return;
 
-  const stats = fs.statSync(from);
+  const stats = await fs.promises.stat(from);
   if (stats.isDirectory()) {
-    fs.cpSync(from, to, { recursive: true });
+    await fs.promises.cp(from, to, { recursive: true });
   } else {
-    ensureDir(path.dirname(to));
-    fs.copyFileSync(from, to);
+    await fs.promises.mkdir(path.dirname(to), { recursive: true });
+    await fs.promises.copyFile(from, to);
   }
 }
 
@@ -400,7 +408,7 @@ function alternateLinks(route) {
     .join("\n    ");
 }
 
-function pageShell({ title, description, content, relativeRoot = ".", canonicalPath = "/", locale = "zh", route = canonicalPath, showLanguage = true }) {
+function pageShell({ title, description, content, relativeRoot = ".", canonicalPath = "/", locale = "zh", route = canonicalPath, showLanguage = true, extraScripts = "" }) {
   const ui = localeUi[locale];
   const canonicalUrl = `${siteUrl}${canonicalPath}`;
   return `<!doctype html>
@@ -464,6 +472,7 @@ function pageShell({ title, description, content, relativeRoot = ".", canonicalP
     </footer>
 
     <script src="${relativeRoot}/script.js"></script>
+    ${extraScripts}
   </body>
 </html>`;
 }
@@ -507,11 +516,52 @@ function renderBlogIndex(posts, locale = "zh", relativeRoot = "..") {
       </section>
 
       <section class="section">
-        <div class="section-inner post-list">
-          ${list}
+        <div class="section-inner">
+          ${locale === "zh" ? '<p class="public-post-status" data-firestore-status hidden aria-live="polite"></p>' : ""}
+          <div class="post-list"${locale === "zh" ? " data-firestore-post-list" : ""}>
+            ${list}
+          </div>
         </div>
       </section>`,
+    extraScripts: locale === "zh"
+      ? `<script src="${relativeRoot}/firebase-config.js"></script>\n    <script type="module" src="${relativeRoot}/client/firebase-public.js"></script>`
+      : "",
   });
+}
+
+function firebaseArticlePlaceholder(hidden = false) {
+  return `<div data-firestore-article${hidden ? " hidden" : ""}>
+    <section class="article-loading" aria-busy="true">
+      <div class="section-inner">
+        <span class="loading-spinner" aria-hidden="true"></span>
+        <div><p class="kicker">文章</p><h1>正在載入文章</h1><p>正在從 Firestore 取得已發布內容。</p></div>
+      </div>
+    </section>
+  </div>`;
+}
+
+function renderFirebasePostPage() {
+  return pageShell({
+    title: "文章載入中 | 蕭士翔",
+    description: "蕭士翔的文章與學習紀錄。",
+    relativeRoot: "../..",
+    canonicalPath: "/blog/post/",
+    route: "/blog/",
+    showLanguage: false,
+    content: firebaseArticlePlaceholder(),
+    extraScripts: '<script src="../../firebase-config.js"></script>\n    <script type="module" src="../../client/firebase-public.js"></script>',
+  });
+}
+
+function githubPagesBlogRedirect() {
+  return `<script>
+    (() => {
+      const match = window.location.pathname.match(/^(.*\\/blog\\/)([^/]+)\\/?$/u);
+      if (!match || match[2] === "post") return;
+      const slug = encodeURIComponent(decodeURIComponent(match[2]));
+      window.location.replace(match[1] + "post/?slug=" + slug);
+    })();
+  </script>`;
 }
 
 function projectMediaClass(index) {
@@ -807,9 +857,11 @@ function buildLocalizedLocale(locale) {
   ];
 }
 
-function build() {
-  emptyDir(distDir);
-  staticEntries.forEach(copyEntry);
+async function build() {
+  await emptyDir(distDir);
+  await Promise.all(staticEntries.map(copyEntry));
+  const firebaseConfig = writeFirebaseClientConfig(distDir);
+  await buildClient(rootDir, distDir);
   ensureDir(postsOutputDir);
   ensureDir(blogOutputDir);
   ensureDir(projectsOutputDir);
@@ -819,6 +871,9 @@ function build() {
   const pages = readPages();
 
   fs.writeFileSync(path.join(blogOutputDir, "index.html"), renderBlogIndex(posts));
+  const firebasePostOutputDir = path.join(blogOutputDir, "post");
+  ensureDir(firebasePostOutputDir);
+  fs.writeFileSync(path.join(firebasePostOutputDir, "index.html"), renderFirebasePostPage());
   fs.writeFileSync(path.join(projectsOutputDir, "index.html"), renderProjectsIndex(projects));
 
   posts.forEach((post) => {
@@ -884,10 +939,17 @@ function build() {
     relativeRoot: siteUrl,
     canonicalPath: "/404.html",
     showLanguage: false,
-    content: `<section class="not-found"><div class="section-inner"><p class="kicker">404</p><h1>這一頁找不到。</h1><p>網址可能已經變更，請回到首頁或查看專題列表。</p><div class="hero-actions"><a class="button button-primary" href="./">回首頁</a><a class="button button-secondary" href="./projects/">查看專題</a></div></div></section>`,
+    content: `<section class="not-found" data-regular-not-found><div class="section-inner"><p class="kicker">404</p><h1>這一頁找不到。</h1><p>網址可能已經變更，請回到首頁或查看專題列表。</p><div class="hero-actions"><a class="button button-primary" href="${siteUrl}/">回首頁</a><a class="button button-secondary" href="${siteUrl}/projects/">查看專題</a></div></div></section>`,
+    extraScripts: githubPagesBlogRedirect(),
   }));
 
+  if (!hasCompleteFirebaseConfig(firebaseConfig)) {
+    console.warn("Firebase client config is incomplete. Static content was built; Firebase features will stay disabled.");
+  }
   console.log(`Built ${posts.length} post(s), ${projects.length} project(s), and ${pages.length} page(s) into ${distDir}`);
 }
 
-build();
+build().catch((error) => {
+  console.error(error);
+  process.exitCode = 1;
+});

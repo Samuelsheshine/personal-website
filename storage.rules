@@ -1,0 +1,26 @@
+rules_version = '2';
+
+service firebase.storage {
+  match /b/{bucket}/o {
+    function isAdmin() {
+      return request.auth != null
+        && request.auth.uid == "Yg0zdHJLOBW9LwTBxzAUopww6kA2"; // ADMIN_UID
+    }
+
+    function isPublishedPost(postId) {
+      return firestore.exists(/databases/(default)/documents/posts/$(postId))
+        && firestore.get(/databases/(default)/documents/posts/$(postId)).data.status == "published";
+    }
+
+    function isValidImageUpload() {
+      return request.resource.size <= 5 * 1024 * 1024
+        && request.resource.contentType.matches("image/.*");
+    }
+
+    match /posts/{postId}/{fileName} {
+      allow read: if isAdmin() || isPublishedPost(postId);
+      allow create, update: if isAdmin() && isValidImageUpload();
+      allow delete: if isAdmin();
+    }
+  }
+}

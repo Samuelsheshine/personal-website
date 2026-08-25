@@ -1,0 +1,28 @@
+{
+  "name": "sam-hsiao-personal-website",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Static multilingual personal website with Firebase-managed blog posts.",
+  "scripts": {
+    "build": "node scripts/build-posts.js",
+    "dev": "npm run build && node scripts/serve.js",
+    "lint": "eslint .",
+    "test": "node --test tests/client-utils.test.js tests/security-rules.test.js",
+    "check": "npm run lint && npm test && npm run build",
+    "firebase:set-admin": "node scripts/configure-admin.js",
+    "firebase:emulators": "npx --yes firebase-tools@15.28.1 emulators:start",
+    "firebase:deploy:rules": "npx --yes firebase-tools@15.28.1 deploy --only firestore:rules,firestore:indexes,storage",
+    "firebase:deploy": "npx --yes firebase-tools@15.28.1 deploy"
+  },
+  "dependencies": {
+    "firebase": "12.18.0"
+  },
+  "devDependencies": {
+    "esbuild": "0.28.2",
+    "eslint": "10.9.1",
+    "globals": "16.4.0"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}

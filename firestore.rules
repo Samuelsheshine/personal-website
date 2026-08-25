@@ -1,0 +1,120 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return isSignedIn()
+        && request.auth.uid == "Yg0zdHJLOBW9LwTBxzAUopww6kA2"; // ADMIN_UID
+    }
+
+    function hasValidPostShape(data) {
+      return data.keys().hasAll([
+          "title",
+          "slug",
+          "excerpt",
+          "content",
+          "coverImage",
+          "coverImagePath",
+          "tags",
+          "status",
+          "createdAt",
+          "updatedAt",
+          "publishedAt"
+        ])
+        && data.keys().hasOnly([
+          "title",
+          "slug",
+          "excerpt",
+          "content",
+          "coverImage",
+          "coverImagePath",
+          "tags",
+          "status",
+          "createdAt",
+          "updatedAt",
+          "publishedAt"
+        ])
+        && data.title is string
+        && data.title.size() > 0
+        && data.title.size() <= 160
+        && data.slug is string
+        && data.slug.size() > 0
+        && data.slug.size() <= 120
+        && data.slug.matches("^[^/]+$")
+        && data.excerpt is string
+        && data.excerpt.size() <= 500
+        && data.content is string
+        && data.content.size() <= 300000
+        && (data.coverImage == null
+          || (data.coverImage is string && data.coverImage.size() <= 2048))
+        && (data.coverImagePath == null
+          || (data.coverImagePath is string && data.coverImagePath.size() <= 512))
+        && data.tags is list
+        && data.tags.size() <= 20
+        && data.status in ["draft", "published"]
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp
+        && (data.publishedAt == null || data.publishedAt is timestamp);
+    }
+
+    function hasValidCreateTimes(data) {
+      return data.createdAt == request.time
+        && data.updatedAt == request.time
+        && ((data.status == "draft" && data.publishedAt == null)
+          || (data.status == "published" && data.publishedAt == request.time));
+    }
+
+    function hasValidUpdateTimes(before, after) {
+      return after.createdAt == before.createdAt
+        && after.updatedAt == request.time
+        && ((after.status == "draft" && after.publishedAt == null)
+          || (after.status == "published"
+            && ((before.status == "published" && after.publishedAt == before.publishedAt)
+              || (before.status == "draft" && after.publishedAt == request.time))));
+    }
+
+    function slugPointsToPost(postId, slug) {
+      return getAfter(/databases/$(database)/documents/postSlugs/$(slug)).data.postId == postId;
+    }
+
+    function validSlugReservation(slug, data) {
+      return data.keys().hasAll(["postId", "createdAt", "updatedAt"])
+        && data.keys().hasOnly(["postId", "createdAt", "updatedAt"])
+        && data.postId is string
+        && data.postId.size() > 0
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp
+        && getAfter(/databases/$(database)/documents/posts/$(data.postId)).data.slug == slug;
+    }
+
+    match /posts/{postId} {
+      allow read: if isAdmin() || resource.data.status == "published";
+
+      allow create: if isAdmin()
+        && hasValidPostShape(request.resource.data)
+        && hasValidCreateTimes(request.resource.data)
+        && slugPointsToPost(postId, request.resource.data.slug);
+
+      allow update: if isAdmin()
+        && hasValidPostShape(request.resource.data)
+        && hasValidUpdateTimes(resource.data, request.resource.data)
+        && slugPointsToPost(postId, request.resource.data.slug);
+
+      allow delete: if isAdmin();
+    }
+
+    match /postSlugs/{slug} {
+      allow read: if isAdmin()
+        || get(/databases/$(database)/documents/posts/$(resource.data.postId)).data.status == "published";
+
+      allow create, update: if isAdmin()
+        && validSlugReservation(slug, request.resource.data);
+
+      allow delete: if isAdmin();
+    }
+  }
+}
