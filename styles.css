@@ -2100,20 +2100,36 @@ body.social-home {
   min-width: 1.1em;
   min-height: 1em;
   border-radius: 4px;
-  outline: 2px dashed rgba(17, 109, 112, 0.58);
-  outline-offset: 5px;
+  outline: none;
   cursor: text;
-  transition: outline-color 160ms ease, background-color 160ms ease;
+  transition: background-color 160ms ease, box-shadow 160ms ease;
 }
 
-.is-home-editing [data-home-editable]:hover {
-  outline-color: var(--teal);
-  background: rgba(255, 255, 255, 0.42);
+.is-home-editing [data-home-editable]:not(a):not(.button):hover {
+  background: rgba(17, 109, 112, 0.08);
 }
 
 .is-home-editing [data-home-editable]:focus {
-  outline: 3px solid var(--teal);
-  background: rgba(255, 255, 255, 0.72);
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(17, 109, 112, 0.16);
+}
+
+.is-home-editing a[data-home-editable]:focus {
+  box-shadow: inset 0 -2px var(--teal);
+}
+
+.is-home-editing .button-primary[data-home-editable]:hover,
+.is-home-editing .button-primary[data-home-editable]:focus {
+  background: var(--teal-dark);
+  color: #fff;
+  box-shadow: 0 12px 28px rgba(17, 109, 112, 0.22);
+}
+
+.is-home-editing .button-secondary[data-home-editable]:hover,
+.is-home-editing .button-secondary[data-home-editable]:focus {
+  border-color: var(--line);
+  background: var(--surface);
+  color: var(--ink);
 }
 
 .is-home-editing [data-home-editable]:empty::before {

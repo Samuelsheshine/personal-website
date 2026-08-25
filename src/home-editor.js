@@ -463,7 +463,7 @@ async function initializeEditor() {
   toolbarElements.reset.disabled = true;
   registerEditorEvents();
   if (!isUsingFallback) {
-    setStatus("直接點擊有虛線框的文字即可修改；版面與元件位置不會被編輯。", "success");
+    setStatus("直接點擊文字即可修改；版面與元件位置不會被編輯。", "success");
   }
 }
 
