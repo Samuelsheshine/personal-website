@@ -208,7 +208,7 @@
           <div class="admin-section-heading">
             <div>
               <h2>首頁文字</h2>
-              <p>三個語言分開儲存；公開頁會保留原本靜態文字作為斷線備援。</p>
+              <p>編輯任一語言後，會在你的 Chrome 中自動翻譯並同步更新另外兩種語言。</p>
             </div>
             <button class="button button-secondary" type="button" data-import-defaults>首次匯入目前靜態內容</button>
           </div>
@@ -232,7 +232,11 @@
               <label class="form-field" for="site-contact-note"><span>聯絡區說明</span><textarea id="site-contact-note" name="contactNote" rows="4" maxlength="1000"></textarea></label>
               <label class="form-field" for="site-contact-email"><span>聯絡 Email</span><input id="site-contact-email" name="contactEmail" type="email" maxlength="320" required /></label>
             </div>
-            <div class="editor-actions"><button class="button button-primary" type="submit" data-save-site-content>儲存這個語言</button></div>
+            <p class="admin-translation-note">
+              自動翻譯使用桌面版 Chrome 138 以上的內建 Translator API，不會傳送 API key，也不會產生翻譯服務費用。首次使用可能需要下載語言模型；儲存後請快速檢查專有名詞與姓名。
+              <strong data-translator-status>正在確認目前瀏覽器是否支援…</strong>
+            </p>
+            <div class="editor-actions"><button class="button button-primary" type="submit" data-save-site-content>翻譯並同步三種語言</button></div>
           </form>
         </section>
 

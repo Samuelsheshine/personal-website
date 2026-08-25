@@ -300,6 +300,21 @@
   gap: 1.35rem;
 }
 
+.admin-translation-note {
+  margin: 0;
+  border-left: 3px solid var(--teal);
+  background: rgba(17, 109, 112, 0.07);
+  color: var(--muted);
+  padding: 0.85rem 1rem;
+  font-size: 0.9rem;
+}
+
+.admin-translation-note strong {
+  display: block;
+  margin-top: 0.45rem;
+  color: var(--ink);
+}
+
 .admin-locale-filter {
   width: min(260px, 100%);
   margin-bottom: 1.35rem;

@@ -126,9 +126,9 @@ projects
 
 1. 開啟 `/admin/`，登入後切換到「首頁文字」。
 2. 第一次使用時按「首次匯入目前靜態內容」；這會建立三語首頁與現有 12 筆三語 Projects，不會覆寫已存在的 Firestore 文件。
-3. 首頁文字可分別選擇中文、英文、日文，修改 Hero 小標題／姓名／介紹、About 標題／段落，以及 Contact 標題／說明／Email。
+3. 首頁文字可選擇中文、英文或日文作為原文，修改 Hero 小標題／姓名／介紹、About 標題／段落，以及 Contact 標題／說明／Email。儲存時會使用桌面版 Chrome 138+ 內建的 Translator API，在瀏覽器本機翻譯並以同一個 Firestore batch 更新三種語言；任何一種翻譯失敗時三種語言都不會寫入。
 4. 切換到「Projects」可依語言新增、編輯、排序、發布、改為草稿或刪除 Project；內容使用 Markdown。
-5. 儲存後資料直接進入 Firestore，公開頁重新整理即可顯示，不需要另外 commit GitHub。靜態 HTML 仍保留原內容作為首次匯入前或 Firebase 暫時無法連線時的備援。
+5. 首次翻譯可能需要由 Chrome 下載語言模型。儲存後資料直接進入 Firestore，公開頁重新整理即可顯示，不需要另外 commit GitHub；翻譯完成後仍建議檢查姓名與工程專有名詞。靜態 HTML 會保留原內容作為 Firebase 暫時無法連線時的備援。
 
 首頁的「目前重點」、能力、學習歷程預覽與固定內容頁目前仍由 repository 的 `index.html`、`scripts/build-posts.js` 與 `content/pages/` 管理，尚未放進 Firestore 後台。
 

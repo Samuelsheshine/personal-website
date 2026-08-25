@@ -17,7 +17,6 @@ import {
   query,
   runTransaction,
   serverTimestamp,
-  setDoc,
   writeBatch,
 } from "firebase/firestore";
 import {
@@ -33,6 +32,9 @@ import { renderMarkdown } from "./markdown";
 import { slugify } from "./slug";
 
 const MAX_IMAGE_SIZE = 5 * 1024 * 1024;
+const SITE_LOCALES = ["zh", "en", "ja"];
+const TRANSLATOR_LANGUAGE_CODES = { zh: "zh-Hant", en: "en", ja: "ja" };
+const LANGUAGE_LABELS = { zh: "中文", en: "英文", ja: "日文" };
 const config = getClientConfig();
 const elements = {
   authLoading: document.querySelector("[data-auth-loading]"),
@@ -67,6 +69,7 @@ const elements = {
   siteForm: document.querySelector("[data-site-content-form]"),
   siteLocale: document.querySelector("#site-locale"),
   siteSaveButton: document.querySelector("[data-save-site-content]"),
+  translatorStatus: document.querySelector("[data-translator-status]"),
   projectsPanel: document.querySelector("[data-projects-panel]"),
   projectEditorPanel: document.querySelector("[data-project-editor-panel]"),
   projectList: document.querySelector("[data-admin-project-list]"),
@@ -144,12 +147,17 @@ function humanizeError(error) {
     "auth/unauthorized-domain": "目前網域尚未加入 Firebase Authentication 的授權網域。",
     "duplicate-slug": "這個 slug 已被其他文章使用，請改用另一個網址名稱。",
     "duplicate-project-slug": "這個語言已經有相同的 Project slug，請改用另一個網址名稱。",
+    "translation-unsupported": "自動翻譯需要桌面版 Chrome 138 以上。請改用最新版 Chrome 開啟管理頁。",
+    "translation-too-long": "翻譯後的文字超過欄位長度限制，請縮短原文後再試。",
+    NotAllowedError: "瀏覽器未允許建立翻譯器，請直接點擊儲存按鈕後再試一次。",
+    NotSupportedError: "Chrome 目前不支援這組語言翻譯，請更新瀏覽器後再試。",
+    NetworkError: "翻譯語言模型下載失敗，請確認網路連線後再試。",
     "permission-denied": "Firebase 拒絕此操作。請確認登入 UID 與安全規則中的管理員 UID 相同。",
     "storage/unauthorized": "沒有圖片操作權限，請確認 Storage Rules 已部署。",
     "storage/retry-limit-exceeded": "圖片上傳多次重試仍失敗，請稍後再試。",
     unavailable: "Firebase 目前無法連線，請稍後再試。",
   };
-  return messages[error?.code] || error?.message || "操作失敗，請稍後再試。";
+  return messages[error?.code] || messages[error?.name] || error?.message || "操作失敗，請稍後再試。";
 }
 
 function timestampToDate(value) {
@@ -606,33 +614,170 @@ function siteContentFormData() {
   return content;
 }
 
+function startSiteTranslators(sourceLocale) {
+  const TranslatorApi = globalThis.Translator;
+  if (!TranslatorApi?.create) {
+    const error = new Error("Translator API unavailable");
+    error.code = "translation-unsupported";
+    throw error;
+  }
+
+  const targetLocales = SITE_LOCALES.filter((locale) => locale !== sourceLocale);
+  return targetLocales.map((targetLocale) => ({
+    targetLocale,
+    promise: TranslatorApi.create({
+      sourceLanguage: TRANSLATOR_LANGUAGE_CODES[sourceLocale],
+      targetLanguage: TRANSLATOR_LANGUAGE_CODES[targetLocale],
+      monitor(monitor) {
+        monitor.addEventListener("downloadprogress", (progressEvent) => {
+          const percent = Math.round(progressEvent.loaded * 100);
+          setNotice(
+            `首次準備 ${LANGUAGE_LABELS[sourceLocale]} → ${LANGUAGE_LABELS[targetLocale]} 翻譯模型：${percent}%`,
+            "info",
+          );
+        });
+      },
+    }),
+  }));
+}
+
+async function updateTranslatorSupportStatus() {
+  if (!elements.translatorStatus) return;
+  const TranslatorApi = globalThis.Translator;
+  if (!TranslatorApi?.create || !TranslatorApi?.availability) {
+    elements.translatorStatus.textContent = "目前瀏覽器不支援；請改用桌面版 Chrome 138 以上開啟管理頁。";
+    elements.siteSaveButton.disabled = true;
+    return;
+  }
+
+  try {
+    const languagePairs = SITE_LOCALES.flatMap((sourceLocale) =>
+      SITE_LOCALES
+        .filter((targetLocale) => targetLocale !== sourceLocale)
+        .map((targetLocale) => ({ sourceLocale, targetLocale })),
+    );
+    const states = await Promise.all(languagePairs.map(({ sourceLocale, targetLocale }) =>
+      TranslatorApi.availability({
+        sourceLanguage: TRANSLATOR_LANGUAGE_CODES[sourceLocale],
+        targetLanguage: TRANSLATOR_LANGUAGE_CODES[targetLocale],
+      }),
+    ));
+    if (states.includes("unavailable")) {
+      elements.translatorStatus.textContent = "目前 Chrome 缺少部分中／英／日翻譯支援，請先更新 Chrome。";
+      elements.siteSaveButton.disabled = true;
+      return;
+    }
+    const requiresDownload = states.some((state) => state !== "available");
+    elements.translatorStatus.textContent = requiresDownload
+      ? "目前瀏覽器已支援；第一次儲存時會先下載需要的語言模型。"
+      : "目前瀏覽器與中／英／日翻譯模型皆已準備完成。";
+  } catch {
+    elements.translatorStatus.textContent = "無法確認翻譯模型狀態；仍可按下儲存，由 Chrome 再次檢查。";
+  }
+}
+
+async function translateText(translator, text) {
+  if (!text) return "";
+  return (await translator.translate(text)).trim();
+}
+
+async function translateSiteContent(sourceContent, targetLocale, translator) {
+  const sourceValues = [
+    sourceContent.heroKicker,
+    sourceContent.heroName,
+    sourceContent.heroIntro,
+    sourceContent.aboutTitle,
+    ...sourceContent.aboutParagraphs,
+    sourceContent.contactTitle,
+    sourceContent.contactNote,
+  ];
+  const translatedValues = await Promise.all(
+    sourceValues.map((value) => translateText(translator, value)),
+  );
+  let cursor = 0;
+  const translated = {
+    locale: targetLocale,
+    heroKicker: translatedValues[cursor++],
+    heroName: translatedValues[cursor++],
+    heroIntro: translatedValues[cursor++],
+    aboutTitle: translatedValues[cursor++],
+    aboutParagraphs: sourceContent.aboutParagraphs.map(() => translatedValues[cursor++]),
+    contactTitle: translatedValues[cursor++],
+    contactNote: translatedValues[cursor++],
+    contactEmail: sourceContent.contactEmail,
+  };
+  validateSiteContentLimits(translated);
+  return translated;
+}
+
+function validateSiteContentLimits(content) {
+  const tooLong = content.heroKicker.length > 160
+    || content.heroName.length > 160
+    || content.heroIntro.length > 2000
+    || content.aboutTitle.length > 300
+    || content.contactTitle.length > 300
+    || content.contactNote.length > 1000
+    || content.contactEmail.length > 320
+    || content.aboutParagraphs.length > 10;
+  if (tooLong) {
+    const error = new Error("Translated content exceeds limits");
+    error.code = "translation-too-long";
+    throw error;
+  }
+}
+
 async function saveSiteContent(event) {
   event.preventDefault();
   if (isSiteSaving) return;
   let content;
+  let translatorJobs;
   try {
     content = siteContentFormData();
+    validateSiteContentLimits(content);
+    // Start both Translator.create() calls while the submit click still provides user activation.
+    translatorJobs = startSiteTranslators(content.locale);
   } catch (error) {
-    setNotice(error.message, "error");
+    setNotice(humanizeError(error), "error");
     return;
   }
 
   isSiteSaving = true;
   elements.siteSaveButton.disabled = true;
-  elements.siteSaveButton.textContent = "儲存中…";
-  setNotice("正在儲存首頁文字…", "info");
+  elements.siteSaveButton.textContent = "翻譯中…";
+  setNotice(`正在把${LANGUAGE_LABELS[content.locale]}翻譯成另外兩種語言…`, "info");
+  let translators = [];
   try {
-    await setDoc(doc(db, "siteContent", content.locale), {
-      ...content,
-      updatedAt: serverTimestamp(),
+    const translatorResults = await Promise.allSettled(
+      translatorJobs.map(({ promise }) => promise),
+    );
+    translators = translatorResults
+      .filter((result) => result.status === "fulfilled")
+      .map((result) => result.value);
+    const failedTranslator = translatorResults.find((result) => result.status === "rejected");
+    if (failedTranslator) throw failedTranslator.reason;
+
+    const translatedContents = await Promise.all(
+      translatorJobs.map(({ targetLocale }, index) =>
+        translateSiteContent(content, targetLocale, translators[index]),
+      ),
+    );
+    const batch = writeBatch(db);
+    [content, ...translatedContents].forEach((localizedContent) => {
+      batch.set(doc(db, "siteContent", localizedContent.locale), {
+        ...localizedContent,
+        updatedAt: serverTimestamp(),
+      });
     });
-    setNotice("首頁文字已儲存，公開頁重新整理後就會顯示。", "success");
+    elements.siteSaveButton.textContent = "同步儲存中…";
+    await batch.commit();
+    setNotice("三種語言的首頁文字已翻譯並同步更新。請快速檢查姓名與專有名詞。", "success");
   } catch (error) {
-    setNotice(`首頁文字儲存失敗：${humanizeError(error)}`, "error");
+    setNotice(`三語同步失敗，這次沒有寫入任何語言：${humanizeError(error)}`, "error");
   } finally {
+    translators.forEach((translator) => translator.destroy?.());
     isSiteSaving = false;
     elements.siteSaveButton.disabled = false;
-    elements.siteSaveButton.textContent = "儲存這個語言";
+    elements.siteSaveButton.textContent = "翻譯並同步三種語言";
   }
 }
 
@@ -985,6 +1130,7 @@ function registerEvents() {
 
 async function initializeAdmin() {
   registerEvents();
+  updateTranslatorSupportStatus();
 
   if (!hasFirebaseConfig()) {
     setVisible(elements.authLoading, false);
