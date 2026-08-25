@@ -271,7 +271,7 @@ function applySiteContent(content) {
   const aboutParagraphs = Array.isArray(content.aboutParagraphs)
     ? content.aboutParagraphs.filter((text) => typeof text === "string" && text.trim())
     : [];
-  if (about && aboutParagraphs.length) {
+  if (about && Array.isArray(content.aboutParagraphs)) {
     about.querySelectorAll(":scope > p").forEach((paragraph) => paragraph.remove());
     const firstNonParagraph = about.firstElementChild;
     aboutParagraphs.forEach((text) => {
@@ -282,9 +282,13 @@ function applySiteContent(content) {
   }
 
   const email = siteHome.querySelector("[data-home-contact-email]");
-  if (email && content.contactEmail) {
-    email.href = `mailto:${content.contactEmail}`;
+  if (email && typeof content.contactEmail === "string") {
     email.textContent = content.contactEmail;
+    if (content.contactEmail.trim()) {
+      email.href = `mailto:${content.contactEmail}`;
+    } else {
+      email.removeAttribute("href");
+    }
   }
 }
 

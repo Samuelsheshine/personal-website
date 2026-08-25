@@ -22,7 +22,10 @@ test("Firestore rules expose editable site content with admin-only writes", () =
   assert.match(firestoreRules, /match \/siteContent\/\{locale\}/);
   assert.match(firestoreRules, /hasValidSiteContentShape\(locale, request\.resource\.data\)/);
   assert.match(firestoreRules, /hasValidAboutParagraphs\(data\.aboutParagraphs\)/);
+  assert.match(firestoreRules, /paragraphs\.size\(\) < 1 \|\|/);
   assert.match(firestoreRules, /paragraphs\[9\] is string/);
+  assert.doesNotMatch(firestoreRules, /data\.heroKicker\.size\(\) > 0/);
+  assert.doesNotMatch(firestoreRules, /data\.contactEmail\.size\(\) > 3/);
   assert.match(firestoreRules, /allow create, update: if isAdmin\(\)/);
 });
 

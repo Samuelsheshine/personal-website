@@ -119,35 +119,27 @@ service cloud.firestore {
         ])
         && data.locale == locale
         && data.heroKicker is string
-        && data.heroKicker.size() > 0
         && data.heroKicker.size() <= 160
         && data.heroName is string
-        && data.heroName.size() > 0
         && data.heroName.size() <= 160
         && data.heroIntro is string
-        && data.heroIntro.size() > 0
         && data.heroIntro.size() <= 2000
         && data.aboutTitle is string
-        && data.aboutTitle.size() > 0
         && data.aboutTitle.size() <= 300
         && hasValidAboutParagraphs(data.aboutParagraphs)
         && data.contactTitle is string
-        && data.contactTitle.size() > 0
         && data.contactTitle.size() <= 300
         && data.contactNote is string
         && data.contactNote.size() <= 1000
         && data.contactEmail is string
-        && data.contactEmail.size() > 3
         && data.contactEmail.size() <= 320
         && data.updatedAt is timestamp;
     }
 
     function hasValidAboutParagraphs(paragraphs) {
       return paragraphs is list
-        && paragraphs.size() > 0
         && paragraphs.size() <= 10
-        && paragraphs[0] is string
-        && paragraphs[0].size() > 0
+        && (paragraphs.size() < 1 || (paragraphs[0] is string && paragraphs[0].size() > 0))
         && (paragraphs.size() < 2 || (paragraphs[1] is string && paragraphs[1].size() > 0))
         && (paragraphs.size() < 3 || (paragraphs[2] is string && paragraphs[2].size() > 0))
         && (paragraphs.size() < 4 || (paragraphs[3] is string && paragraphs[3].size() > 0))

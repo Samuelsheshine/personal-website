@@ -604,14 +604,11 @@ function siteContentFormData() {
     contactNote: fields.contactNote.value.trim(),
     contactEmail: fields.contactEmail.value.trim(),
   };
-  if (!content.heroKicker || !content.heroName || !content.heroIntro || !content.aboutTitle) {
-    throw new Error("首頁標題、姓名、介紹與 About 標題都不可留白。");
+  if (content.aboutParagraphs.length > 10) {
+    throw new Error("About 內文最多 10 個段落。");
   }
-  if (!content.aboutParagraphs.length || content.aboutParagraphs.length > 10) {
-    throw new Error("About 內文需有 1 到 10 個段落。");
-  }
-  if (!content.contactTitle || !content.contactEmail || !fields.contactEmail.checkValidity()) {
-    throw new Error("請填入聯絡區標題與有效的 Email。");
+  if (content.contactEmail && !fields.contactEmail.checkValidity()) {
+    throw new Error("聯絡 Email 若有填寫，必須是有效的 Email 格式。");
   }
   return content;
 }
