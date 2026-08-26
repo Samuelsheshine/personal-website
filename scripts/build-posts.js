@@ -754,6 +754,7 @@ function renderPost(post, locale = "zh", relativeRoot = "../..") {
 }
 
 function renderContentPage(page, locale = "zh", relativeRoot = "..") {
+  if (page.slug === "interests") return renderInterestsPage(page, locale, relativeRoot);
   const ui = localeUi[locale];
   const prefix = localePrefixes[locale];
   return pageShell({
@@ -778,6 +779,76 @@ function renderContentPage(page, locale = "zh", relativeRoot = "..") {
           </div>
         </div>
       </article>`,
+  });
+}
+
+function parseInterestSections(page) {
+  const matches = [...page.body.matchAll(/^##\s+(.+)$/gmu)];
+  if (!matches.length) {
+    return [{
+      id: "interest-1",
+      title: page.title,
+      summary: stripMarkdown(page.body).slice(0, 180),
+      content: page.body.trim(),
+    }];
+  }
+  return matches.map((match, index) => {
+    const start = match.index + match[0].length;
+    const end = matches[index + 1]?.index ?? page.body.length;
+    const content = page.body.slice(start, end).trim();
+    const summaryBlock = content.split(/\r?\n\s*\r?\n/u).find((block) => {
+      const trimmed = block.trim();
+      return trimmed
+        && !/^(?:#|\||:::|>|[-*]\s|\d+\.\s)/u.test(trimmed)
+        && !trimmed.includes("|---");
+    }) || content;
+    const plain = stripMarkdown(summaryBlock).replaceAll("|", " ").replace(/\s+/gu, " ").trim();
+    return {
+      id: `interest-${index + 1}`,
+      title: match[1].trim(),
+      summary: `${plain.slice(0, 180)}${plain.length > 180 ? "…" : ""}`,
+      content,
+    };
+  });
+}
+
+function safeJson(value) {
+  return JSON.stringify(value).replaceAll("<", "\\u003c");
+}
+
+function renderInterestsPage(page, locale, relativeRoot) {
+  const ui = localeUi[locale];
+  const prefix = localePrefixes[locale];
+  const labels = {
+    zh: { about: "關於", title: "興趣", intro: "從摘要選擇一個分類，展開完整紀錄。登入管理模式後，可以在這裡新增、編輯、刪除與排序。", back: "回個人檔案", expand: "展開完整內容", categories: "興趣分類" },
+    en: { about: "About", title: "Interests", intro: "Choose a category, then expand its full notes. In admin mode you can add, edit, remove, and reorder every item here.", back: "Back to profile", expand: "View full details", categories: "Interest categories" },
+    ja: { about: "プロフィール", title: "興味", intro: "カテゴリーを選び、詳しい記録を展開できます。管理モードでは追加、編集、削除、並べ替えができます。", back: "プロフィールへ", expand: "詳しい内容を見る", categories: "興味のカテゴリー" },
+  }[locale];
+  const interests = parseInterestSections(page);
+  const cards = interests.map((item, index) => `<article class="interest-detail-card" id="interest-${item.id}" data-profile-item-id="${item.id}">
+      <header><span class="interest-detail-number">${String(index + 1).padStart(2, "0")}</span><div><h2>${escapeHtml(item.title)}</h2><p>${escapeHtml(item.summary)}</p></div></header>
+      <details class="interest-detail-expand"><summary>${labels.expand}</summary><div class="prose interest-detail-content">${renderMarkdown(item.content)}</div></details>
+    </article>`).join("\n");
+  const navigation = interests.map((item) => `<a href="#interest-${item.id}">${escapeHtml(item.title)}</a>`).join("");
+  const details = localizedHome[locale].meta.map(([label, value], index) => ({ id: `detail-${index + 1}`, label, value }));
+  const defaults = { details, interests };
+  return pageShell({
+    title: `${page.title} | ${ui.displayName}`,
+    description: page.description,
+    relativeRoot,
+    canonicalPath: `${prefix}/${page.slug}/`,
+    route: `/${page.slug}/`,
+    locale,
+    bodyClass: "social-about-page",
+    content: `<div class="profile-about-page" data-interest-page data-locale="${locale}" data-expand-label="${labels.expand}">
+      <script type="application/json" data-profile-list-defaults>${safeJson(defaults)}</script>
+      <header class="profile-about-hero"><div><a href="../" class="profile-back-link">← ${labels.back}</a><p>${labels.about}</p><h1>${labels.title}</h1><span>${labels.intro}</span></div></header>
+      <div class="profile-about-grid">
+        <aside class="profile-about-navigation"><h2>${labels.categories}</h2><nav data-interest-category-nav>${navigation}</nav></aside>
+        <section class="interest-detail-list" data-interest-detail-list>${cards}</section>
+      </div>
+    </div>`,
+    extraScripts: `${firebasePublicScripts(relativeRoot)}\n    <script type="module" src="${relativeRoot}/client/interest-editor.js"></script>`,
   });
 }
 
@@ -901,7 +972,7 @@ function editableProject(locale, project) {
   };
 }
 
-function renderLocalizedHome(locale, projects) {
+function renderLocalizedHome(locale, projects, pages) {
   const copy = localizedHome[locale];
   const prefix = localePrefixes[locale];
   const relativeRoot = locale === "zh" ? "." : "..";
@@ -911,13 +982,19 @@ function renderLocalizedHome(locale, projects) {
     ja: { overview: "概要", about: "プロフィール", activity: "アクティビティ", projects: "プロジェクト", writing: "記事", intro: "自己紹介", details: "基本情報", interests: "興味", featured: "注目", recent: "最近の活動", connect: "連絡先" },
   }[locale];
   const profileField = (key, value, tag = "span") => `<${tag} data-profile-field="${key}">${value}</${tag}>`;
+  const details = copy.meta.map(([label, value], index) => ({ id: `detail-${index + 1}`, label, value }));
+  const interestPage = pages?.find((page) => page.slug === "interests");
+  const interests = interestPage
+    ? parseInterestSections(interestPage)
+    : copy.interestSnapshot.map(([title, summary], index) => ({ id: `interest-${index + 1}`, title, summary, content: "" }));
+  const profileLists = { details, interests };
   const projectCards = projects.slice(0, 4).map((project, index) => `<a class="social-project-row" href="./projects/${project.slug}/">
             <span class="social-project-number ${projectMediaClass(index)}">${String(index + 1).padStart(2, "0")}</span>
             <span class="social-project-copy"><small>${escapeHtml(project.category)}</small><strong>${escapeHtml(project.title)}</strong><span>${escapeHtml(project.excerpt)}</span></span>
           </a>`).join("\n");
-  const meta = copy.meta.map(([label, text], index) => `<div class="social-detail-row"><span class="social-detail-icon" aria-hidden="true">${["▣", "✈", "◎"][index]}</span><div>${profileField(`metaLabel${index}`, label, "small")}${profileField(`metaValue${index}`, text, "strong")}</div></div>`).join("");
+  const meta = details.map((item, index) => `<div class="social-detail-row" data-profile-item-id="${item.id}"><span class="social-detail-icon" aria-hidden="true">${["▣", "✈", "◎", "◆", "●", "＋"][index % 6]}</span><div><small>${escapeHtml(item.label)}</small><strong>${escapeHtml(item.value)}</strong></div></div>`).join("");
   const focus = copy.focus.map(([label, text], index) => `<div class="social-focus-row">${profileField(`focusLabel${index}`, label, "strong")}${profileField(`focusValue${index}`, text)}</div>`).join("");
-  const interestSnapshot = copy.interestSnapshot.map(([title, text], index) => `<div class="social-interest-item">${profileField(`interestLabel${index}`, title, "strong")}${profileField(`interestValue${index}`, text)}</div>`).join("");
+  const interestSnapshot = interests.slice(0, 4).map((item) => `<div class="social-interest-item" data-profile-item-id="${item.id}"><strong>${escapeHtml(item.title)}</strong><span>${escapeHtml(item.summary)}</span></div>`).join("");
   const skills = copy.skills.map(([title, text], index) => `<div class="social-skill-row">${profileField(`skillLabel${index}`, title, "strong")}${profileField(`skillValue${index}`, text)}</div>`).join("");
   const journeyRoutes = ["academic-journey", "projects/nupace-exchange-prep", "resume"];
   const journey = copy.journeyLinks.map(([title, text], index) => `<a class="social-journey-row" href="./${journeyRoutes[index]}/"><span>${profileField(`journeyLabel${index}`, title, "strong")}${profileField(`journeyValue${index}`, text, "small")}</span><b aria-hidden="true">›</b></a>`).join("");
@@ -925,6 +1002,7 @@ function renderLocalizedHome(locale, projects) {
   return pageShell({
     title: copy.title, description: copy.description, relativeRoot, canonicalPath: `${prefix}/`, route: "/", locale, bodyClass: "social-home",
     content: `<div class="social-profile" data-site-home data-locale="${locale}">
+      <script type="application/json" data-profile-list-defaults>${safeJson(profileLists)}</script>
       <section class="social-profile-shell" id="top" aria-labelledby="hero-title">
         <div class="social-cover"><img src="${relativeRoot}/assets/hero-workspace.png" alt="${copy.imageAlt}" /></div>
         <div class="social-profile-head">
@@ -938,8 +1016,8 @@ function renderLocalizedHome(locale, projects) {
       <div class="social-page-grid">
         <aside class="social-sidebar">
           <section class="social-card" id="about"><div class="social-card-header">${profileField("introHeading", ui.intro, "h2")}</div><div class="social-card-body"><h3 data-home-about-title>${copy.aboutTitle}</h3><div class="social-about-copy" data-home-about-paragraphs>${copy.about.map((text) => `<p>${text}</p>`).join("")}</div></div></section>
-          <section class="social-card"><div class="social-card-header">${profileField("detailsHeading", ui.details, "h2")}</div><div class="social-card-body social-details">${meta}</div></section>
-          <section class="social-card"><div class="social-card-header">${profileField("interestsHeading", ui.interests, "h2")}<a href="./interests/" data-profile-field="interestLink">${copy.interestLink}</a></div><div class="social-interest-grid">${interestSnapshot}</div></section>
+          <section class="social-card" data-profile-details-card><div class="social-card-header">${profileField("detailsHeading", ui.details, "h2")}</div><div class="social-card-body social-details" data-profile-details>${meta}</div></section>
+          <section class="social-card" data-profile-interests-card><div class="social-card-header">${profileField("interestsHeading", ui.interests, "h2")}<a href="./interests/" data-profile-field="interestLink" data-interest-page-link>${copy.interestLink}</a></div><div class="social-interest-grid" data-profile-interests>${interestSnapshot}</div></section>
           <section class="social-card" id="contact"><div class="social-card-header">${profileField("connectHeading", ui.connect, "h2")}</div><div class="social-card-body"><h3 data-home-contact-title>${copy.contactTitle}</h3><p data-home-contact-note>${copy.contactNote}</p><div class="social-contact-links"><a href="mailto:samhsiao0926@gmail.com" data-home-contact-email>samhsiao0926@gmail.com</a><a href="https://github.com/Samuelsheshine" target="_blank" rel="noreferrer">GitHub</a><a href="https://www.linkedin.com/in/shih-hsiang-hsiao-652182324/" target="_blank" rel="noreferrer">LinkedIn</a></div></div></section>
         </aside>
 
@@ -965,7 +1043,7 @@ function buildLocalizedLocale(locale) {
   const pages = readPages(path.join(contentRoot, "pages"));
 
   ensureDir(outputRoot);
-  fs.writeFileSync(path.join(outputRoot, "index.html"), renderLocalizedHome(locale, projects));
+  fs.writeFileSync(path.join(outputRoot, "index.html"), renderLocalizedHome(locale, projects, pages));
 
   const blogDir = path.join(outputRoot, "blog");
   const projectsDir = path.join(outputRoot, "projects");
@@ -1022,7 +1100,7 @@ async function build() {
   const projects = readProjects();
   const pages = readPages();
 
-  fs.writeFileSync(path.join(distDir, "index.html"), renderLocalizedHome("zh", projects));
+  fs.writeFileSync(path.join(distDir, "index.html"), renderLocalizedHome("zh", projects, pages));
 
   fs.writeFileSync(path.join(blogOutputDir, "index.html"), renderBlogIndex(posts));
   const firebasePostOutputDir = path.join(blogOutputDir, "post");

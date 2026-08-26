@@ -6,6 +6,7 @@ async function buildClient(rootDir, distDir) {
     entryPoints: {
       "firebase-public": path.join(rootDir, "src", "firebase-public.js"),
       "home-editor": path.join(rootDir, "src", "home-editor.js"),
+      "interest-editor": path.join(rootDir, "src", "interest-editor.js"),
       admin: path.join(rootDir, "src", "admin.js"),
     },
     outdir: path.join(distDir, "client"),

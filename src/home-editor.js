@@ -12,7 +12,16 @@ import {
   writeBatch,
 } from "firebase/firestore";
 import { getClientConfig, getFirebaseApp, hasFirebaseConfig } from "./firebase-core";
-import { applyProfileFields, collectProfileFields, validateProfileFields } from "./profile-content";
+import { createProfileCollectionDialog } from "./profile-collection-dialog";
+import {
+  applyProfileFields,
+  collectProfileFields,
+  normalizeProfileLists,
+  renderProfileDetails,
+  renderProfileInterestPreview,
+  validateProfileFields,
+  validateProfileLists,
+} from "./profile-content";
 
 const SITE_LOCALES = ["zh", "en", "ja"];
 const TRANSLATOR_LANGUAGE_CODES = { zh: "zh-Hant", en: "en", ja: "ja" };
@@ -24,7 +33,11 @@ let db;
 let currentLocale;
 let initialContent;
 let initialProfileFields;
+let initialProfileLists;
+let currentProfileLists;
 let isDirty = false;
+let isTextDirty = false;
+let areListsDirty = false;
 let isSaving = false;
 let toolbarElements;
 
@@ -104,8 +117,49 @@ function activateEditableFields() {
     markEditable(paragraph, `About 段落 ${index + 1}`);
   });
   siteHome.querySelectorAll("[data-profile-field]").forEach((element) => {
+    if (element.matches("[data-interest-page-link]")
+      || element.closest("[data-profile-details], [data-profile-interests]")) return;
     markEditable(element, "個人檔案文字");
   });
+}
+
+function renderManagedProfileLists() {
+  renderProfileDetails(siteHome.querySelector("[data-profile-details]"), currentProfileLists.details);
+  renderProfileInterestPreview(siteHome.querySelector("[data-profile-interests]"), currentProfileLists.interests);
+}
+
+function createProfileListActions() {
+  const detailsDialog = createProfileCollectionDialog("details", (details) => {
+    currentProfileLists.details = details;
+    renderManagedProfileLists();
+    setDirty(true, "lists");
+  });
+  const interestsDialog = createProfileCollectionDialog("interests", (interests) => {
+    currentProfileLists.interests = interests;
+    renderManagedProfileLists();
+    setDirty(true, "lists");
+  });
+  const actions = [
+    ["[data-profile-details-card] .social-card-header", "編輯詳細資料", () => detailsDialog.open(currentProfileLists.details)],
+    ["[data-profile-interests-card] .social-card-header", "管理興趣", () => interestsDialog.open(currentProfileLists.interests)],
+  ];
+  actions.forEach(([selector, label, open]) => {
+    const header = siteHome.querySelector(selector);
+    if (!header) return;
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "profile-card-admin-action";
+    button.textContent = label;
+    button.addEventListener("click", open);
+    header.append(button);
+  });
+  const interestLink = siteHome.querySelector("[data-interest-page-link]");
+  if (interestLink) {
+    const url = new URL(interestLink.href, window.location.href);
+    url.searchParams.set("edit", "interests");
+    interestLink.href = url;
+    interestLink.title = "開啟完整興趣編輯頁";
+  }
 }
 
 function ensureAboutEditorParagraph() {
@@ -192,8 +246,9 @@ function validateContent(content) {
   }
 }
 
-function hasTranslatableText(content, profileFields) {
-  return [
+function hasTranslatableText(content, profileFields, profileLists, options) {
+  const values = [];
+  if (options.text) values.push(
     content.heroKicker,
     content.heroName,
     content.heroIntro,
@@ -202,7 +257,12 @@ function hasTranslatableText(content, profileFields) {
     content.contactTitle,
     content.contactNote,
     ...Object.values(profileFields),
-  ].some(Boolean);
+  );
+  if (options.lists) values.push(
+    ...profileLists.details.flatMap((item) => [item.label, item.value]),
+    ...profileLists.interests.flatMap((item) => [item.title, item.summary, item.content]),
+  );
+  return values.some(Boolean);
 }
 
 function emptyTranslatedContent(sourceContent, targetLocale) {
@@ -263,15 +323,47 @@ async function translateProfileFields(sourceFields, translator) {
   return translated;
 }
 
-async function translateAllContent(sourceContent, sourceProfileFields) {
+function emptyTranslatedProfileLists(sourceLists) {
+  return {
+    details: sourceLists.details.map((item) => ({ id: item.id, label: "", value: "" })),
+    interests: sourceLists.interests.map((item) => ({ id: item.id, title: "", summary: "", content: "" })),
+  };
+}
+
+async function translateProfileLists(sourceLists, translator) {
+  const details = await Promise.all(sourceLists.details.map(async (item) => {
+    const [label, value] = await Promise.all([
+      translateText(translator, item.label),
+      translateText(translator, item.value),
+    ]);
+    return { id: item.id, label, value };
+  }));
+  const interests = await Promise.all(sourceLists.interests.map(async (item) => {
+    const [title, summary, content] = await Promise.all([
+      translateText(translator, item.title),
+      translateText(translator, item.summary),
+      translateText(translator, item.content),
+    ]);
+    return { id: item.id, title, summary, content };
+  }));
+  return validateProfileLists({ details, interests });
+}
+
+async function translateAllContent(sourceContent, sourceProfileFields, sourceProfileLists, options) {
   const targetLocales = SITE_LOCALES.filter((locale) => locale !== sourceContent.locale);
-  if (!hasTranslatableText(sourceContent, sourceProfileFields)) {
+  if (!hasTranslatableText(sourceContent, sourceProfileFields, sourceProfileLists, options)) {
     return [
-      { locale: sourceContent.locale, siteContent: sourceContent, profileFields: sourceProfileFields },
+      {
+        locale: sourceContent.locale,
+        siteContent: options.text ? sourceContent : null,
+        profileFields: options.text ? sourceProfileFields : null,
+        profileLists: options.lists ? sourceProfileLists : null,
+      },
       ...targetLocales.map((locale) => ({
         locale,
-        siteContent: emptyTranslatedContent(sourceContent, locale),
-        profileFields: emptyTranslatedProfileFields(sourceProfileFields),
+        siteContent: options.text ? emptyTranslatedContent(sourceContent, locale) : null,
+        profileFields: options.text ? emptyTranslatedProfileFields(sourceProfileFields) : null,
+        profileLists: options.lists ? emptyTranslatedProfileLists(sourceProfileLists) : null,
       })),
     ];
   }
@@ -302,14 +394,20 @@ async function translateAllContent(sourceContent, sourceProfileFields) {
     const failure = results.find((result) => result.status === "rejected");
     if (failure) throw failure.reason;
     const translated = await Promise.all(jobs.map(async ({ targetLocale }, index) => {
-      const [siteContent, profileFields] = await Promise.all([
-        translateContent(sourceContent, targetLocale, translators[index]),
-        translateProfileFields(sourceProfileFields, translators[index]),
+      const [siteContent, profileFields, profileLists] = await Promise.all([
+        options.text ? translateContent(sourceContent, targetLocale, translators[index]) : null,
+        options.text ? translateProfileFields(sourceProfileFields, translators[index]) : null,
+        options.lists ? translateProfileLists(sourceProfileLists, translators[index]) : null,
       ]);
-      return { locale: targetLocale, siteContent, profileFields };
+      return { locale: targetLocale, siteContent, profileFields, profileLists };
     }));
     return [
-      { locale: sourceContent.locale, siteContent: sourceContent, profileFields: sourceProfileFields },
+      {
+        locale: sourceContent.locale,
+        siteContent: options.text ? sourceContent : null,
+        profileFields: options.text ? sourceProfileFields : null,
+        profileLists: options.lists ? sourceProfileLists : null,
+      },
       ...translated,
     ];
   } finally {
@@ -317,8 +415,16 @@ async function translateAllContent(sourceContent, sourceProfileFields) {
   }
 }
 
-function setDirty(dirty) {
-  isDirty = dirty;
+function setDirty(dirty, scope = "text") {
+  if (!dirty) {
+    isTextDirty = false;
+    areListsDirty = false;
+  } else if (scope === "lists") {
+    areListsDirty = true;
+  } else {
+    isTextDirty = true;
+  }
+  isDirty = isTextDirty || areListsDirty;
   toolbarElements.reset.disabled = !dirty || isSaving;
   toolbarElements.save.disabled = !dirty || isSaving;
   if (dirty) setStatus("有尚未儲存的修改。", "pending");
@@ -328,14 +434,19 @@ async function saveContent() {
   if (!isDirty || isSaving) return;
   let sourceContent;
   let sourceProfileFields;
+  let sourceProfileLists;
   let translationPromise;
+  const saveOptions = { text: isTextDirty, lists: areListsDirty };
   try {
     sourceContent = collectContent();
     sourceProfileFields = collectProfileFields(siteHome);
-    validateContent(sourceContent);
-    validateProfileFields(sourceProfileFields);
+    sourceProfileLists = saveOptions.lists ? validateProfileLists(currentProfileLists) : currentProfileLists;
+    if (saveOptions.text) {
+      validateContent(sourceContent);
+      validateProfileFields(sourceProfileFields);
+    }
     // Translator.create() must start directly from the user's click to retain browser user activation.
-    translationPromise = translateAllContent(sourceContent, sourceProfileFields);
+    translationPromise = translateAllContent(sourceContent, sourceProfileFields, sourceProfileLists, saveOptions);
   } catch (error) {
     setStatus(error.message || "內容格式不正確。", "error");
     return;
@@ -349,25 +460,41 @@ async function saveContent() {
   try {
     const localizedContents = await translationPromise;
     const batch = writeBatch(db);
-    localizedContents.forEach(({ locale, siteContent, profileFields }) => {
-      batch.set(doc(db, "siteContent", locale), {
-        ...siteContent,
-        updatedAt: serverTimestamp(),
-      });
-      batch.set(doc(db, "profileContent", locale), {
-        locale,
-        fields: profileFields,
-        updatedAt: serverTimestamp(),
-      });
+    localizedContents.forEach(({ locale, siteContent, profileFields, profileLists }) => {
+      if (siteContent && profileFields) {
+        batch.set(doc(db, "siteContent", locale), {
+          ...siteContent,
+          updatedAt: serverTimestamp(),
+        });
+        batch.set(doc(db, "profileContent", locale), {
+          locale,
+          fields: profileFields,
+          updatedAt: serverTimestamp(),
+        });
+      }
+      if (profileLists) {
+        batch.set(doc(db, "profileLists", locale), {
+          locale,
+          ...profileLists,
+          updatedAt: serverTimestamp(),
+        });
+      }
     });
     toolbarElements.save.textContent = "儲存中…";
     await batch.commit();
-    initialContent = structuredClone(sourceContent);
-    initialProfileFields = structuredClone(sourceProfileFields);
+    if (saveOptions.text) {
+      initialContent = structuredClone(sourceContent);
+      initialProfileFields = structuredClone(sourceProfileFields);
+    }
+    if (saveOptions.lists) {
+      initialProfileLists = structuredClone(sourceProfileLists);
+      currentProfileLists = structuredClone(sourceProfileLists);
+    }
     setDirty(false);
     setStatus("三種語言已同步完成；訪客重新整理後就會看到。", "success");
   } catch (error) {
-    setDirty(true);
+    if (saveOptions.text) setDirty(true, "text");
+    if (saveOptions.lists) setDirty(true, "lists");
     setStatus(`儲存失敗，這次沒有寫入任何語言：${error.message || "請稍後再試。"}`, "error");
   } finally {
     isSaving = false;
@@ -381,6 +508,8 @@ function resetContent() {
   if (!isDirty || isSaving) return;
   applyContent(initialContent);
   applyProfileFields(siteHome, initialProfileFields);
+  currentProfileLists = structuredClone(initialProfileLists);
+  renderManagedProfileLists();
   activateEditableFields();
   setDirty(false);
   setStatus("已還原成上次儲存的內容。", "info");
@@ -448,6 +577,7 @@ async function initializeEditor() {
   document.body.classList.add("is-home-editing");
   let isUsingFallback = false;
   await window.__PROFILE_CONTENT_LOAD_PROMISE__;
+  currentProfileLists = normalizeProfileLists(await window.__PROFILE_LISTS_LOAD_PROMISE__);
   try {
     const snapshot = await getDoc(doc(db, "siteContent", currentLocale));
     if (snapshot.exists()) applyContent(snapshot.data());
@@ -459,6 +589,8 @@ async function initializeEditor() {
   activateEditableFields();
   initialContent = structuredClone(collectContent());
   initialProfileFields = structuredClone(collectProfileFields(siteHome));
+  initialProfileLists = structuredClone(currentProfileLists);
+  createProfileListActions();
   toolbarElements.save.disabled = true;
   toolbarElements.reset.disabled = true;
   registerEditorEvents();

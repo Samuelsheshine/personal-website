@@ -35,6 +35,13 @@ test("Firestore rules expose profile content with public reads and admin-only wr
   assert.match(firestoreRules, /data\.fields is map/);
 });
 
+test("Firestore rules expose dynamic profile lists with admin-only writes", () => {
+  assert.match(firestoreRules, /match \/profileLists\/\{locale\}/);
+  assert.match(firestoreRules, /hasValidProfileListsShape\(locale, request\.resource\.data\)/);
+  assert.match(firestoreRules, /data\.details is list/);
+  assert.match(firestoreRules, /data\.interests is list/);
+});
+
 test("Firestore rules expose only published projects to the public", () => {
   assert.match(firestoreRules, /match \/projects\/\{projectId\}/);
   assert.match(firestoreRules, /resource\.data\.published == true/);

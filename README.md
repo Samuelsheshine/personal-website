@@ -14,7 +14,7 @@
 - `scripts/build-posts.js` 繼續產生三語靜態頁、manifest、sitemap 與 404 頁。
 - esbuild 只負責打包 Firebase Web SDK 與管理／公開貼文 JavaScript，不改變既有 UI 架構。
 - Firebase Authentication：Google 登入與 Auth User 狀態。
-- Cloud Firestore：`posts/{postId}` 儲存貼文；`postSlugs/{slug}` 在 transaction 中保證 slug 唯一；`siteContent/{locale}` 儲存三語姓名、簡介與聯絡內容；`profileContent/{locale}` 儲存社群檔案與動態牆欄位；`projects/{locale--slug}` 儲存可編輯的三語 Projects。
+- Cloud Firestore：`posts/{postId}` 儲存貼文；`postSlugs/{slug}` 在 transaction 中保證 slug 唯一；`siteContent/{locale}` 儲存三語姓名、簡介與聯絡內容；`profileContent/{locale}` 儲存社群檔案與動態牆欄位；`profileLists/{locale}` 儲存可新增、刪除與排序的基本資料及興趣；`projects/{locale--slug}` 儲存可編輯的三語 Projects。
 - Firebase Storage：`posts/{postId}/{uuid}.{ext}` 儲存封面圖片，單檔上限 5 MB。
 - GitHub Pages：目前既有部署方式；`404.html` 會處理 `/blog/{slug}/` 與 `/projects/{slug}/` 動態網址。
 - Firebase Hosting：可選部署方式，`firebase.json` 已提供乾淨網址 rewrite。
@@ -124,11 +124,13 @@ projects
 ## 使用管理後台修改首頁與 Projects
 
 1. 開啟 `/admin/`；管理員登入後看到的就是公開首頁本身，而不是首頁文字表單。
-2. 個人檔案、簡介、基本資料、興趣、目前重點、能力、學習歷程預覽、按鈕標籤與 Contact 文字可直接點擊修改；版面、區塊與元件位置不能拖動或刪除，所有文字都可以留白。編輯狀態不會顯示常駐虛線框。
-3. 使用原本的語言選單決定中文、英文或日文原文，按底部工具列的「儲存並同步三種語言」。Chrome 138+ 內建 Translator API 會在瀏覽器本機翻譯，並以同一個 Firestore batch 更新三種語言；任何一步失敗時三種語言都不會寫入。
-4. 工具列的「還原」會回到上次儲存內容；「離開編輯」會回到一般訪客首頁。尚未儲存就離開時會顯示確認。
-5. 按「管理 Blog／Projects」可進入內容列表，依語言新增、編輯、排序、發布、改為草稿或刪除 Project；內容使用 Markdown。
-6. 首次翻譯可能需要由 Chrome 下載語言模型。儲存後資料直接進入 Firestore，公開頁重新整理即可顯示，不需要另外 commit GitHub；翻譯完成後仍建議檢查姓名與工程專有名詞。靜態 HTML 會保留原內容作為 Firebase 暫時無法連線時的備援。
+2. 個人檔案、簡介、目前重點、能力、學習歷程預覽、按鈕標籤與 Contact 文字可直接點擊修改；版面、區塊與元件位置不能拖動或刪除，所有文字都可以留白。編輯狀態不會顯示常駐虛線框。
+3. 「基本資料」卡片的「編輯詳細資料」可新增、修改、移除與上下排序欄位；最多 20 項。興趣卡片的「管理興趣」提供相同操作，並可輸入首頁摘要及支援 Markdown 的完整內容。
+4. 編輯模式中點「查看完整興趣」會進入 About 式興趣管理頁；每張分類卡都有「編輯」，底部工具列也能新增分類。公開訪客只會看到摘要與可展開的完整內容，不會看到管理按鈕。
+5. 使用原本的語言選單決定中文、英文或日文原文，按底部工具列的「儲存並同步三種語言」。Chrome 138+ 內建 Translator API 會在瀏覽器本機翻譯，並以同一個 Firestore batch 更新三種語言；任何一步失敗時三種語言都不會寫入。只修改基本資料或興趣時，不會重新翻譯其他首頁長文。
+6. 工具列的「還原」會回到上次儲存內容；「離開編輯」會回到一般訪客首頁。尚未儲存就離開時會顯示確認。
+7. 按「管理 Blog／Projects」可進入內容列表，依語言新增、編輯、排序、發布、改為草稿或刪除 Project；內容使用 Markdown。
+8. 首次翻譯可能需要由 Chrome 下載語言模型。儲存後資料直接進入 Firestore，公開頁重新整理即可顯示，不需要另外 commit GitHub；翻譯完成後仍建議檢查姓名與工程專有名詞。靜態 HTML 會保留原內容作為 Firebase 暫時無法連線時的備援。
 
 Projects 與 Blog 的卡片內容及點入後的詳細頁由管理後台管理。Now、Academic Journey、Resume 與 Interests 等既有固定 Markdown 頁仍保留在 repository；若要更動這些頁的結構或長篇內容，修改對應的 `content/{locale}/pages/*.md` 後部署即可。
 

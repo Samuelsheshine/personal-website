@@ -11,7 +11,14 @@ import {
 } from "firebase/firestore";
 import { getFirebaseApp, hasFirebaseConfig } from "./firebase-core";
 import { estimateReadingTime, renderMarkdown } from "./markdown";
-import { applyProfileFields } from "./profile-content";
+import {
+  applyProfileFields,
+  normalizeProfileLists,
+  readProfileListDefaults,
+  renderInterestDetails,
+  renderProfileDetails,
+  renderProfileInterestPreview,
+} from "./profile-content";
 import { slugify } from "./slug";
 
 const latestContainer = document.querySelector("[data-latest-posts]");
@@ -20,6 +27,7 @@ const publicStatus = document.querySelector("[data-firestore-status]");
 const article = document.querySelector("[data-firestore-article]");
 const regularNotFound = document.querySelector("[data-regular-not-found]");
 const siteHome = document.querySelector("[data-site-home]");
+const interestPage = document.querySelector("[data-interest-page]");
 const projectList = document.querySelector("[data-firestore-project-list]");
 const featuredProjects = document.querySelector("[data-firestore-project-featured]");
 const projectArticle = document.querySelector("[data-firestore-project-article]");
@@ -318,6 +326,35 @@ async function loadProfileContent() {
   }
 }
 
+function applyProfileLists(root, lists) {
+  if (siteHome) {
+    renderProfileDetails(root.querySelector("[data-profile-details]"), lists.details);
+    renderProfileInterestPreview(root.querySelector("[data-profile-interests]"), lists.interests);
+  }
+  if (interestPage) renderInterestDetails(root, lists.interests, renderMarkdown);
+}
+
+async function loadProfileLists() {
+  const root = siteHome || interestPage;
+  if (!root) return { details: [], interests: [] };
+  const defaults = readProfileListDefaults(root);
+  if (!hasFirebaseConfig()) {
+    applyProfileLists(root, defaults);
+    return defaults;
+  }
+  try {
+    const db = getFirestore(getFirebaseApp());
+    const locale = currentLocale(root);
+    const snapshot = await getDoc(doc(db, "profileLists", locale));
+    const lists = snapshot.exists() ? normalizeProfileLists(snapshot.data()) : defaults;
+    applyProfileLists(root, lists);
+    return lists;
+  } catch {
+    applyProfileLists(root, defaults);
+    return defaults;
+  }
+}
+
 function projectStatusClass(status) {
   return `status-${slugify(status || "ongoing")}`;
 }
@@ -462,5 +499,6 @@ loadPublishedPosts();
 loadArticle();
 window.__SITE_CONTENT_LOAD_PROMISE__ = loadSiteContent();
 window.__PROFILE_CONTENT_LOAD_PROMISE__ = window.__SITE_CONTENT_LOAD_PROMISE__.then(loadProfileContent);
+window.__PROFILE_LISTS_LOAD_PROMISE__ = window.__PROFILE_CONTENT_LOAD_PROMISE__.then(loadProfileLists);
 loadPublishedProjects();
 loadProjectArticle();
